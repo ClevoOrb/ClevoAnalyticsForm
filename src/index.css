@@ -1,0 +1,236 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Fonts - Matching Orbuculum_FE exactly */
+@font-face {
+  font-family: 'ArcaMajora3-Bold';
+  src: local('ArcaMajora3-Bold'), url("https://d2zcrs37ownl9k.cloudfront.net/Fonts/ArcaMajora3-Bold.woff") format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OpenSans-Regular';
+  src: local('OpenSans-Regular'), url("https://d2zcrs37ownl9k.cloudfront.net/Fonts/OpenSans-Regular.woff") format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OpenSans-Semibold';
+  src: local('OpenSans-Semibold'), url("https://d2zcrs37ownl9k.cloudfront.net/Fonts/OpenSans-Semibold.woff") format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OpenSans-Bold';
+  src: local('OpenSans-Bold'), url("https://d2zcrs37ownl9k.cloudfront.net/Fonts/OpenSans-Bold.woff") format('woff');
+  font-display: swap;
+}
+
+/* Font Utility Classes - Matching Orbuculum_FE */
+.arca {
+  font-family: 'ArcaMajora3-Bold', sans-serif;
+}
+
+.opensans-regular {
+  font-family: 'OpenSans-Regular', sans-serif;
+}
+
+.opensans-semibold {
+  font-family: 'OpenSans-Semibold', sans-serif;
+}
+
+.opensans-bold {
+  font-family: 'OpenSans-Bold', sans-serif;
+}
+
+.roboto {
+  font-family: "Roboto", sans-serif;
+}
+
+/* Headings use ArcaMajora3-Bold */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'ArcaMajora3-Bold', sans-serif;
+  color: #2c2c2c;
+}
+
+:root {
+  font-family: "Roboto", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-size: 15px;
+  color: #646464;
+  background-color: #ffffff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  padding: 0;
+  margin: 0;
+  scroll-padding-top: 6rem;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Focus Styles */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid #080594;
+  outline-offset: 2px;
+}
+
+/* Form Input Styles */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="tel"],
+textarea {
+  font-family: inherit;
+}
+
+input[type="radio"] {
+  accent-color: #080594;
+}
+
+/* Animation Classes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Back Button Style - Minimal base, Tailwind classes handle the rest */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Toast Customization */
+.Toastify__toast--success {
+  background: #10b981 !important;
+}
+
+.Toastify__toast--error {
+  background: #ef4444 !important;
+}
+
+.Toastify__toast--info {
+  background: #08B7F6 !important;
+}
+
+.Toastify__toast--warning {
+  background: #f59e0b !important;
+}
+
+/* Utility Classes */
+.text-shadow {
+  text-shadow: 3px 8px 11px rgba(0, 0, 0, 0.12);
+}
+
+/* Responsive Container */
+.container-responsive {
+  width: 90%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1200px) {
+  .container-responsive {
+    width: 95%;
+  }
+}
+
+/* Loading Spinner */
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #080594;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
