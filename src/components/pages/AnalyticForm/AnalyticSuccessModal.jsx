@@ -149,7 +149,7 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
                           <img
                             src={Badge}
                             alt="Sections"
-                            className="w-8 h-8 animate-spin transform hover:scale-110 transition-all duration-500"
+                            className="w-8 h-8 transform hover:scale-110 transition-all duration-500"
                           />
                         </div>
                         <span className="text-2xl font-bold text-white">
