@@ -88,7 +88,8 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
 
   const handleContinue = () => {
     fun("no"); // Close modal first
-    navigate("www.clevohealth.com"); // Navigate to home page
+    // Use window.location.href for external URLs (not navigate, which is for internal routes)
+    window.location.href = "https://www.clevohealth.com";
   };
 
   const handleFillAnotherForm = () => {
