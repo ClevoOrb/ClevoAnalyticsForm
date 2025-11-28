@@ -83,8 +83,8 @@ export default function AccessCodeGuard({ children }) {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Admin Access</h1>
-          <p className="text-gray-500 mt-2">
-            Enter your 6-digit access code to continue
+          <p className="text-gray-500 mt-2 text-lg">
+            Enter your 6-digit access code
           </p>
         </div>
 
