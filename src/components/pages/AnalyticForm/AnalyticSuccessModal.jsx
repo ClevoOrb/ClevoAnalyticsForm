@@ -100,7 +100,7 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
 
     // Close modal and navigate to the same form's login page
     fun("no");
-    navigate(`/analytic-form-login/${formId}`, { replace: true });
+    navigate(`/afl/${formId}`, { replace: true });
   };
 
   return (
@@ -166,7 +166,7 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
               <div className="w-full flex flex-col mac:flex-row justify-center items-center mt-6 mb-2 gap-3">
                 <button
                   onClick={handleContinue}
-                  className="px-8 text-[15px] py-3 bg-[#08B7F6] hover:bg-[#069de8] rounded-full text-white roboto font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full max-w-xs"
+                  className="px-8 text-[15px] py-3 bg-[var(--color-accent)] hover:bg-[#069DE8] rounded-full text-white roboto font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full max-w-xs"
                 >
                   Continue to Home
                 </button>

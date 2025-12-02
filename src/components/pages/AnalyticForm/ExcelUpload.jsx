@@ -12,11 +12,16 @@
  *   subQuestionType, Sub-Question, Suboptions, section
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import LoadingScreen from "../Form/LoadingScreen";
 import useAnalyticForms from "../../../hooks/useAnalyticForms";
+import ThemeSelector, { getThemeById, applyTheme } from "../../common/ThemeSelector";
+import ThemeMethodSelector, { applyThemeMethod } from "../../common/ThemeMethodSelector";
+import LogoPicker from "../../common/LogoPicker";
+import FormPreview from "../../common/FormPreview";
+import ThemeSuccessModal from "../../common/ThemeSuccessModal";
 
 // Excel parsing function (using SheetJS/xlsx library)
 // Supports TWO formats:
@@ -140,9 +145,46 @@ export default function ExcelUpload() {
   const [uploadedData, setUploadedData] = useState(null);
   const [fileName, setFileName] = useState("");
   const [formName, setFormName] = useState("");
+  const [selectedTheme, setSelectedTheme] = useState("default"); // Theme ID or "custom"
+  const [customColors, setCustomColors] = useState(null); // { dark: "#hex", accent: "#hex" } for custom themes
+  const [selectedThemeMethod, setSelectedThemeMethod] = useState("gradient"); // Theme fill method
+  const [logoPC, setLogoPC] = useState(null); // Custom logo for PC/Desktop (base64)
+  const [logoMobile, setLogoMobile] = useState(null); // Custom logo for Mobile (base64)
   const [createdFormId, setCreatedFormId] = useState(null);
   const [createdFormLink, setCreatedFormLink] = useState("");
+  const [showThemeModal, setShowThemeModal] = useState(false); // Theme success modal
   const fileInputRef = useRef(null);
+
+  // Reset to default theme on mount (admin pages always use default colors)
+  useEffect(() => {
+    applyTheme("default");
+  }, []);
+
+  // Get current theme colors (handles both preset and custom)
+  const getCurrentThemeColors = () => {
+    if (selectedTheme === "custom" && customColors) {
+      return { dark: customColors.dark, accent: customColors.accent };
+    }
+    const theme = getThemeById(selectedTheme);
+    return { dark: theme.dark, accent: theme.accent };
+  };
+
+  // Handle theme selection - can be string (preset) or object (custom)
+  const handleThemeChange = (themeData) => {
+    if (typeof themeData === "string") {
+      // Preset theme selected
+      setSelectedTheme(themeData);
+      setCustomColors(null);
+      if (themeData !== "default") {
+        setShowThemeModal(true);
+      }
+    } else if (themeData && themeData.id === "custom") {
+      // Custom theme selected
+      setSelectedTheme("custom");
+      setCustomColors({ dark: themeData.dark, accent: themeData.accent });
+      setShowThemeModal(true);
+    }
+  };
 
   // Supabase hook for form operations
   const { createForm, isLoading: isCreatingForm } = useAnalyticForms();
@@ -224,6 +266,12 @@ export default function ExcelUpload() {
       toast.error("Please enter a form name", {
         duration: 3000,
       });
+      // Scroll to and focus on the form name input
+      const formNameInput = document.getElementById("formName");
+      if (formNameInput) {
+        formNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => formNameInput.focus(), 300); // Focus after scroll animation
+      }
       return;
     }
 
@@ -234,7 +282,12 @@ export default function ExcelUpload() {
         name: formName.trim(),
         fileName: fileName,
         questions: uploadedData,
-        sections: uploadedData.map(section => Object.keys(section)[0])
+        sections: uploadedData.map(section => Object.keys(section)[0]),
+        themeColor: selectedTheme, // Include selected theme ID or "custom"
+        customColors: selectedTheme === "custom" ? customColors : null, // Include custom colors if custom theme
+        themeMethod: selectedThemeMethod, // Include theme fill method (gradient/solid)
+        logoPC: logoPC, // Custom logo for PC/Desktop (base64)
+        logoMobile: logoMobile // Custom logo for Mobile (base64)
       };
 
       // Save form (currently to localStorage, will be API later)
@@ -242,7 +295,7 @@ export default function ExcelUpload() {
 
       // Generate the form link
       const baseUrl = window.location.origin;
-      const formLink = `${baseUrl}/analytic-form-login/${savedForm.id}`;
+      const formLink = `${baseUrl}/afl/${savedForm.id}`;
 
       setCreatedFormId(savedForm.id);
       setCreatedFormLink(formLink);
@@ -275,6 +328,10 @@ export default function ExcelUpload() {
     setUploadedData(null);
     setFileName("");
     setFormName("");
+    setSelectedTheme("default"); // Reset to default theme
+    setCustomColors(null); // Reset custom colors
+    setLogoPC(null); // Reset PC logo
+    setLogoMobile(null); // Reset Mobile logo
     setCreatedFormId(null);
     setCreatedFormLink("");
     if (fileInputRef.current) {
@@ -305,7 +362,7 @@ export default function ExcelUpload() {
                   </li>
                 ))}
                 {questions.length > 3 && (
-                  <li className="text-[#08B7F6]">
+                  <li className="text-[#08b7f6]">
                     ...and {questions.length - 3} more questions
                   </li>
                 )}
@@ -377,7 +434,7 @@ export default function ExcelUpload() {
             />
             <button
               onClick={copyToClipboard}
-              className="px-4 py-3 bg-[#080594] text-white rounded-lg hover:bg-[#0a06b8] transition-colors flex items-center gap-2"
+              className="px-4 py-3 bg-[#080594] text-white rounded-lg hover:bg-[#060473] transition-colors flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -390,8 +447,8 @@ export default function ExcelUpload() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            to={`/analytic-form-login/${createdFormId}`}
-            className="flex-1 bg-[#08B7F6] text-white flex items-center justify-center px-6 py-3 rounded-full font-semibold hover:bg-[#069de8] transition-colors text-center"
+            to={`/afl/${createdFormId}`}
+            className="flex-1 bg-[#08b7f6] text-white flex items-center justify-center px-6 py-3 rounded-full font-semibold hover:bg-[#069DE8] transition-colors text-center"
           >
             Open Form
           </Link>
@@ -430,8 +487,8 @@ export default function ExcelUpload() {
               </p>
             </div>
             <Link
-              to="/analytic-forms"
-              className="bg-gradient-to-r from-[#08B7F6] to-[#080594] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:from-[#080594] hover:to-[#08B7F6] transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2"
+              to="/af"
+              className="bg-gradient-to-r from-[#08b7f6] to-[#080594] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:from-[#080594] hover:to-[#08b7f6] transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -452,7 +509,7 @@ export default function ExcelUpload() {
                 {/* Instructions Card */}
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-5 mb-8 border border-blue-100">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-[#08B7F6] rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 bg-[#08b7f6] rounded-xl flex items-center justify-center flex-shrink-0">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -474,7 +531,7 @@ export default function ExcelUpload() {
                       htmlFor="formName"
                       className="block text-sm font-semibold text-gray-700 mb-2"
                     >
-                      Form Name
+                      Form Name<span className="text-red-500 text-xl">*</span>
                     </label>
                     <input
                       type="text"
@@ -482,15 +539,57 @@ export default function ExcelUpload() {
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="e.g., Health Assessment 2025"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08B7F6] focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08b7f6] focus:border-transparent transition-all"
                       required
+                    />
+                  </div>
+
+                  {/* Theme Selector */}
+                  <ThemeSelector
+                    value={selectedTheme}
+                    customColors={customColors}
+                    onChange={handleThemeChange}
+                    label="Select Theme"
+                  />
+
+                  {/* Theme Method Selector */}
+                  <ThemeMethodSelector
+                    value={selectedThemeMethod}
+                    onChange={setSelectedThemeMethod}
+                    themeColor={getCurrentThemeColors().dark}
+                    accentColor={getCurrentThemeColors().accent}
+                    label="Fill Style"
+                  />
+
+                  {/* Custom Logo Picker - PC and Mobile */}
+                  <LogoPicker
+                    logoPC={logoPC}
+                    logoMobile={logoMobile}
+                    onChangePC={setLogoPC}
+                    onChangeMobile={setLogoMobile}
+                    themeColor={getCurrentThemeColors().dark}
+                    label="Custom Logos (Optional)"
+                  />
+
+                  {/* Live Form Preview */}
+                  <div className="mt-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Form Preview
+                    </label>
+                    <FormPreview
+                      themeColor={getCurrentThemeColors().dark}
+                      accentColor={getCurrentThemeColors().accent}
+                      themeMethod={selectedThemeMethod}
+                      logoPC={logoPC}
+                      logoMobile={logoMobile}
+                      formName={formName}
                     />
                   </div>
 
                   {/* File Upload Section */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Upload Excel File
+                      Upload Excel File<span className="text-red-500 text-xl">*</span>
                     </label>
 
                     {/* Hidden file input */}
@@ -508,7 +607,7 @@ export default function ExcelUpload() {
                       className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${
                         fileName
                           ? "border-green-400 bg-green-50 hover:bg-green-100"
-                          : "border-gray-300 bg-gray-50 hover:border-[#08B7F6] hover:bg-blue-50"
+                          : "border-gray-300 bg-gray-50 hover:border-[#08b7f6] hover:bg-blue-50"
                       }`}
                     >
                       {fileName ? (
@@ -524,7 +623,7 @@ export default function ExcelUpload() {
                         </div>
                       ) : (
                         <div className="text-center">
-                          <div className="w-16 h-16 bg-gradient-to-br from-[#08B7F6] to-[#080594] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                          <div className="w-16 h-16 bg-gradient-to-br from-[#08b7f6] to-[#080594] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
@@ -550,7 +649,7 @@ export default function ExcelUpload() {
                     disabled={!uploadedData || !formName.trim()}
                     className={`w-full py-4 font-bold rounded-xl text-base uppercase tracking-wide transition-all duration-300 ${
                       uploadedData && formName.trim()
-                        ? "bg-gradient-to-r from-[#080594] to-[#08B7F6] text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                        ? "bg-gradient-to-r from-[#080594] to-[#08b7f6] text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     }`}
                   >
@@ -571,6 +670,15 @@ export default function ExcelUpload() {
           </div>
         </div>
       </div>
+
+      {/* Theme Success Modal */}
+      <ThemeSuccessModal
+        isOpen={showThemeModal}
+        onClose={() => setShowThemeModal(false)}
+        themeId={selectedTheme}
+        themeName={selectedTheme === "custom" ? "Custom" : getThemeById(selectedTheme).name}
+        customColors={customColors}
+      />
     </>
   );
 }

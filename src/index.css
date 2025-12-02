@@ -2,6 +2,138 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   THEME COLOR VARIABLES
+   ============================================
+   Two main colors used throughout the app:
+   --color-dark   : Primary dark color (buttons, headings, borders)
+   --color-accent : Secondary bright color (highlights, progress bars)
+
+   Theme Methods:
+   --fill-selected : The fill style for selected states (gradient or solid)
+   --fill-selected-hover : The fill style for hover states
+
+   20 Predefined Themes - Applied via data-theme attribute on <html>
+   ============================================ */
+:root,
+[data-theme="default"] {
+  --color-dark: #080594;
+  --color-accent: #08b7f6;
+}
+
+/* Theme Method: Gradient (default) */
+:root,
+[data-theme-method="gradient"] {
+  --fill-selected: linear-gradient(135deg, var(--color-dark), var(--color-accent));
+  --fill-selected-hover: linear-gradient(135deg, var(--color-accent), var(--color-dark));
+}
+
+/* Theme Method: Solid */
+[data-theme-method="solid"] {
+  --fill-selected: var(--color-accent);
+  --fill-selected-hover: var(--color-dark);
+}
+
+[data-theme="forest"] {
+  --color-dark: #283618;
+  --color-accent: #52b788;
+}
+
+[data-theme="grape"] {
+  --color-dark: #3c096c;
+  --color-accent: #c77dff;
+}
+
+[data-theme="midnight"] {
+  --color-dark: #10002b;
+  --color-accent: #5a189a;
+}
+
+[data-theme="terracotta"] {
+  --color-dark: #fb5607;
+  --color-accent: #ff006e;
+}
+
+[data-theme="sunshine"] {
+  --color-dark: #202020;
+  --color-accent: #ffee32;
+}
+
+[data-theme="silver"] {
+  --color-dark: #131515;
+  --color-accent: #7de2d1;
+}
+
+[data-theme="coffee"] {
+  --color-dark: #006d77;
+  --color-accent: #83c5be;
+}
+
+[data-theme="ruby"] {
+  --color-dark: #0b090a;
+  --color-accent: #e5383b;
+}
+
+[data-theme="violet"] {
+  --color-dark: #041b15;
+  --color-accent: #136f63;
+}
+
+[data-theme="mint"] {
+  --color-dark: #000000;
+  --color-accent: #CFFFE2;
+}
+
+[data-theme="stone"] {
+  --color-dark: #696663;
+  --color-accent: #cbc5c0;
+}
+
+[data-theme="royal"] {
+  --color-dark: #02343f;
+  --color-accent: #f0edcc;
+}
+
+[data-theme="blush"] {
+  --color-dark: #0a174e;
+  --color-accent: #f5d042;
+}
+
+[data-theme="gold"] {
+  --color-dark: #ffc60a;
+  --color-accent: #ffe285;
+}
+
+[data-theme="ocean"] {
+  --color-dark: #3b1877;
+  --color-accent: #da5a2a;
+}
+
+[data-theme="emerald"] {
+  --color-dark: #1c3e35;
+  --color-accent: #99f2d1;
+}
+
+[data-theme="crimson"] {
+  --color-dark: #422057;
+  --color-accent: #FCF951;
+}
+
+[data-theme="neon"] {
+  --color-dark: #03045e;
+  --color-accent: #b8fb3c;
+}
+
+[data-theme="electric"] {
+  --color-dark: #080708;
+  --color-accent: #3772ff;
+}
+
+[data-theme="aqua"] {
+  --color-dark: #4831D4;
+  --color-accent: #CCF381;
+}
+
 /* Custom Fonts - Matching Orbuculum_FE exactly */
 @font-face {
   font-family: 'ArcaMajora3-Bold';
@@ -117,7 +249,7 @@ body {
 }
 
 *:focus-visible {
-  outline: 2px solid #080594;
+  outline: 2px solid var(--color-dark);
   outline-offset: 2px;
 }
 
@@ -131,7 +263,7 @@ textarea {
 }
 
 input[type="radio"] {
-  accent-color: #080594;
+  accent-color: var(--color-dark);
 }
 
 /* Animation Classes */
@@ -195,7 +327,7 @@ input[type="radio"] {
 }
 
 .Toastify__toast--info {
-  background: #08B7F6 !important;
+  background: var(--color-accent) !important;
 }
 
 .Toastify__toast--warning {
@@ -223,7 +355,7 @@ input[type="radio"] {
 /* Loading Spinner */
 .spinner {
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #080594;
+  border-top: 3px solid var(--color-dark);
   border-radius: 50%;
   width: 24px;
   height: 24px;

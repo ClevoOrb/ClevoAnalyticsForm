@@ -22,6 +22,9 @@ import RewardsRulesModal from "../Form/RewardsRulesModal";
 import AnalyticFormNavbar from "./AnalyticFormNavbar";
 import useAnalyticForms from "../../../hooks/useAnalyticForms";
 import useAnalyticResponses from "../../../hooks/useAnalyticResponses";
+import { applyTheme } from "../../common/ThemeSelector";
+import { applyThemeMethod } from "../../common/ThemeMethodSelector";
+import ThemedSuccessModal from "./ThemedSuccessModal";
 
 // Use URL references instead of imports to avoid bundling large SVG files
 const lockedIcon = "/assets/lockedBadge.svg";
@@ -47,6 +50,10 @@ export default function AnalyticFeedbackForm() {
   // Timer-related state for global countdown visibility
   const [showStreakWarning, setShowStreakWarning] = useState(false);
   const [warningCountdown, setWarningCountdown] = useState(10);
+
+  // Button hover states for gradient effects
+  const [logoutHover, setLogoutHover] = useState(false);
+  const [doneHover, setDoneHover] = useState(false);
 
   // Timer constants and refs
   const STREAK_TIME_LIMIT = 3 * 60 * 1000; // 3 minutes
@@ -82,6 +89,17 @@ export default function AnalyticFeedbackForm() {
           setFormConfig(config);
           setJsonData(config.questions || []);
 
+          // Apply the theme from form config
+          const themeId = config.theme_color || "default";
+          const customColors = config.custom_colors || null;
+          applyTheme(themeId, customColors);
+          console.log("Applied theme:", themeId, customColors ? "with custom colors" : "");
+
+          // Apply the theme method from form config
+          const themeMethod = config.theme_method || "gradient";
+          applyThemeMethod(themeMethod);
+          console.log("Applied theme method:", themeMethod);
+
           // Build the FilledIndexDict dynamically
           const dict = { "No Report Found": 0 };
           config.sections?.forEach((sectionName, idx) => {
@@ -91,11 +109,11 @@ export default function AnalyticFeedbackForm() {
           setFilledIndexDict(dict);
         } else {
           console.error("Form not found in Supabase");
-          navigate("/analytic-form-upload");
+          navigate("/afu");
         }
       } catch (e) {
         console.error("Error loading form config from Supabase:", e);
-        navigate("/analytic-form-upload");
+        navigate("/afu");
       }
     };
 
@@ -176,7 +194,7 @@ export default function AnalyticFeedbackForm() {
       };
       checkRulesSeen();
     } else {
-      navigate(`/analytic-form-login/${formId}`, { replace: true });
+      navigate(`/afl/${formId}`, { replace: true });
     }
   }, [filledIndexDict, formConfig, formId, getRewards, updateRewards]);
 
@@ -334,7 +352,7 @@ export default function AnalyticFeedbackForm() {
     Cookies.remove("analytic_form_id");
 
     setTimeout(() => {
-      navigate(`/analytic-form-login/${formId}`, { replace: true });
+      navigate(`/afl/${formId}`, { replace: true });
     }, 1500);
   };
 
@@ -387,13 +405,26 @@ export default function AnalyticFeedbackForm() {
   return (
     <>
       {!isLoaded ? <LoadingScreen /> : null}
-      {<AnalyticSuccessModal modalOpen={modalOpen} fun={handleModal} formId={formId} maxSections={maxSections} />}
+      {/* Show ThemedSuccessModal for custom themes, AnalyticSuccessModal for default */}
+      {formConfig?.theme_color && formConfig.theme_color !== "default" ? (
+        <ThemedSuccessModal
+          modalOpen={modalOpen}
+          fun={handleModal}
+          formId={formId}
+          maxSections={maxSections}
+          themeId={formConfig.theme_color}
+          customColors={formConfig.custom_colors}
+        />
+      ) : (
+        <AnalyticSuccessModal modalOpen={modalOpen} fun={handleModal} formId={formId} maxSections={maxSections} />
+      )}
       <RewardsRulesModal
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
         isFirstTime={isFirstTimeUser}
+        themeId={formConfig?.theme_color || "default"}
       />
-      <div className="flex-col gap-4 items-center justify-center h-full bg-gray-50 font-sans w-full pb-40">
+      <div className="flex-col z-[-10] gap-4 items-center justify-center h-screen bg-gray-50 font-sans w-full">
         <AnalyticFormNavbar
           onRulesClick={() => setShowRulesModal(true)}
           navbarVisible={true}
@@ -402,6 +433,8 @@ export default function AnalyticFeedbackForm() {
           formId={formId}
           formName={formConfig?.name || "Analytics Form"}
           sectionsCount={formConfig?.sections?.length || 13}
+          logoPC={formConfig?.logo_pc || null}
+          logoMobile={formConfig?.logo_mobile || null}
         />
 
         <div className="relative h-[90%] w-[90%] tab:w-[94%] mac:w-[94%] mx-auto">
@@ -475,7 +508,7 @@ export default function AnalyticFeedbackForm() {
                 </Link>
                 <div className="w-full bg-gray-200 rounded-full mt-auto overflow-hidden" style={{ height: "2px" }}>
                   <div
-                    className="bg-[#08B7F6] transition-all duration-300"
+                    className="bg-[var(--color-accent)] transition-all duration-300"
                     style={{
                       height: "2px",
                       width: `${isCompleted ? 100 : sectionProgress.progress || 0}%`,
@@ -487,11 +520,18 @@ export default function AnalyticFeedbackForm() {
           })}
         </div>
       </div>
-      <div className="z-20 fixed flex justify-between bottom-0 bg-white px-7 py-4 tab:p-6 md:px-12 md:py-8 w-full mx-auto">
+      <div className="fixed z-[10] flex justify-between bottom-0 bg-white px-7 py-4 tab:p-6 md:px-12 md:py-8 w-full mx-auto">
         <div>
           <button
             onClick={handleLogout}
-            className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] hover:bg-[#080594] hover:text-white hover border-[#080594] uppercase text-[#080594] transition-all"
+            className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] uppercase transition-all"
+            style={{
+              background: logoutHover ? 'var(--fill-selected)' : 'transparent',
+              borderColor: 'var(--color-dark)',
+              color: logoutHover ? 'text-var(--color-dark)' : 'var(--color-dark)',
+            }}
+            onMouseEnter={() => setLogoutHover(true)}
+            onMouseLeave={() => setLogoutHover(false)}
           >
             Log Out
           </button>
@@ -512,7 +552,13 @@ export default function AnalyticFeedbackForm() {
                 navigate("/", { replace: true });
               }, 2000);
             }}
-            className="text-[15px] px-10 py-4 opensans-bold bg-[#080594] rounded-full uppercase text-white hover:text-[#080594] hover:bg-white border-[3px] border-[#080594] transition-all"
+            className="text-[15px] px-10 py-4 opensans-bold rounded-full uppercase text-var(--color-dark) border-[3px] transition-all"
+            style={{
+              background: doneHover ? 'var(--fill-selected-hover)' : 'var(--fill-selected)',
+              borderColor: 'var(--color-dark)',
+            }}
+            onMouseEnter={() => setDoneHover(true)}
+            onMouseLeave={() => setDoneHover(false)}
           >
             done
           </button>

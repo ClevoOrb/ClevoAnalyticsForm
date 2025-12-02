@@ -15,6 +15,17 @@ function RatingInput({ fun, initialValue = null }) {
     fun(Number(value))
   };
 
+  // Style for selected state - uses CSS variable that respects theme method (gradient/solid)
+  const selectedStyle = {
+    background: 'var(--fill-selected)',
+    color: 'var(--color-dark)',
+  };
+
+  const unselectedStyle = {
+    background: '#d4d3d3',
+    color: 'black',
+  };
+
   return (
     <div className='cursor-pointer'>
       <p className="font-semibold mb-4 opensans-semibold text-[#2C2C2C]">Rate on a scale of 1-10:</p>
@@ -25,7 +36,8 @@ function RatingInput({ fun, initialValue = null }) {
             onClick={() => handleRatingChange(value)}
             value={value}
             key={value}
-            className={`h-8 tb:h-12 opensans-semibold cursor-pointer rounded-md md:rounded-xl w-[3rem] flex justify-center items-center mb-2 text-[1rem] leading-[1.5rem] tab:text-[1.3rem] tab:leading-[2.1rem] mac:text-[1.2rem] mac:leading-[1.7rem] md:leading-[1.7rem] md:text-[1.1rem] tb:text-xl ${rating === value ? 'text-white text-center rounded-md md:rounded-lg bg-[#080594]' : 'bg-[#d4d3d3] text-black'}`}
+            className="h-8 tb:h-12 opensans-semibold cursor-pointer rounded-md md:rounded-xl w-[3rem] flex justify-center items-center mb-2 text-[1rem] leading-[1.5rem] tab:text-[1.3rem] tab:leading-[2.1rem] mac:text-[1.2rem] mac:leading-[1.7rem] md:leading-[1.7rem] md:text-[1.1rem] tb:text-xl transition-all duration-300"
+            style={rating === value ? selectedStyle : unselectedStyle}
           >
             {value}
           </label>

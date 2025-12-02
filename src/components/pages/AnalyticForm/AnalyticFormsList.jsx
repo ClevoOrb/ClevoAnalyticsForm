@@ -17,6 +17,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import useAnalyticForms from "../../../hooks/useAnalyticForms";
 import useAccessCode from "../../../hooks/useAccessCode";
+import ThemeSelector, { getThemeById, applyTheme } from "../../common/ThemeSelector";
+import LogoPicker from "../../common/LogoPicker";
+import ThemeSuccessModal from "../../common/ThemeSuccessModal";
 
 // localStorage key for storing archived form IDs
 const ARCHIVED_FORMS_KEY = 'archived_form_ids';
@@ -28,13 +31,28 @@ export default function AnalyticFormsList() {
   const [showArchived, setShowArchived] = useState(false);
   // List of archived form IDs (stored in localStorage)
   const [archivedFormIds, setArchivedFormIds] = useState([]);
+  // State for theme picker modal
+  const [themePickerFormId, setThemePickerFormId] = useState(null);
+  const [tempTheme, setTempTheme] = useState("default");
+  // State for logo picker modal
+  const [logoPickerFormId, setLogoPickerFormId] = useState(null);
+  const [tempLogo, setTempLogo] = useState(null);
+  const [logoPickerTheme, setLogoPickerTheme] = useState("default");
+  // State for theme success modal
+  const [showThemeSuccessModal, setShowThemeSuccessModal] = useState(false);
+  const [savedThemeId, setSavedThemeId] = useState("default");
   const navigate = useNavigate();
 
   // Supabase hook
-  const { getAllForms, deleteForm } = useAnalyticForms();
+  const { getAllForms, deleteForm, updateFormColor, updateFormLogo } = useAnalyticForms();
 
   // Access code hook - to check if user is admin (can delete)
   const { isAdmin } = useAccessCode();
+
+  // Reset to default theme on mount (admin pages always use default colors)
+  useEffect(() => {
+    applyTheme("default");
+  }, []);
 
   // Load archived form IDs from localStorage on mount
   useEffect(() => {
@@ -124,6 +142,101 @@ export default function AnalyticFormsList() {
   };
 
   /**
+   * Open theme picker for a form
+   */
+  const handleOpenThemePicker = (formId, currentTheme) => {
+    setThemePickerFormId(formId);
+    setTempTheme(currentTheme || "default");
+  };
+
+  /**
+   * Close theme picker
+   */
+  const handleCloseThemePicker = () => {
+    setThemePickerFormId(null);
+    setTempTheme("default");
+  };
+
+  /**
+   * Save the new theme for a form
+   */
+  const handleSaveTheme = async () => {
+    if (!themePickerFormId) return;
+
+    try {
+      // updateFormColor still works - we store theme ID in themeColor field
+      const success = await updateFormColor(themePickerFormId, tempTheme);
+
+      if (success) {
+        // Update local state
+        setForms(forms.map(form =>
+          form.id === themePickerFormId
+            ? { ...form, themeColor: tempTheme }
+            : form
+        ));
+        // Show success modal for non-default themes
+        if (tempTheme !== "default") {
+          setSavedThemeId(tempTheme);
+          setShowThemeSuccessModal(true);
+        } else {
+          toast.success("Theme updated successfully!", { duration: 2000 });
+        }
+        handleCloseThemePicker();
+      } else {
+        toast.error("Error updating theme", { duration: 3000 });
+      }
+    } catch (e) {
+      console.error("Error updating form theme:", e);
+      toast.error("Error updating theme", { duration: 3000 });
+    }
+  };
+
+  /**
+   * Open logo picker for a form
+   */
+  const handleOpenLogoPicker = (formId, currentLogo, theme) => {
+    setLogoPickerFormId(formId);
+    setTempLogo(currentLogo || null);
+    setLogoPickerTheme(theme || "default");
+  };
+
+  /**
+   * Close logo picker
+   */
+  const handleCloseLogoPicker = () => {
+    setLogoPickerFormId(null);
+    setTempLogo(null);
+    setLogoPickerTheme("default");
+  };
+
+  /**
+   * Save the new logo for a form
+   */
+  const handleSaveLogo = async () => {
+    if (!logoPickerFormId) return;
+
+    try {
+      const success = await updateFormLogo(logoPickerFormId, tempLogo);
+
+      if (success) {
+        // Update local state
+        setForms(forms.map(form =>
+          form.id === logoPickerFormId
+            ? { ...form, logo: tempLogo }
+            : form
+        ));
+        toast.success(tempLogo ? "Logo updated successfully!" : "Logo removed successfully!", { duration: 2000 });
+        handleCloseLogoPicker();
+      } else {
+        toast.error("Error updating logo", { duration: 3000 });
+      }
+    } catch (e) {
+      console.error("Error updating form logo:", e);
+      toast.error("Error updating logo", { duration: 3000 });
+    }
+  };
+
+  /**
    * Filter forms based on archive status
    * - If showArchived is true: show only archived forms
    * - If showArchived is false: show only non-archived forms
@@ -191,8 +304,8 @@ export default function AnalyticFormsList() {
             {/* Create New Form Button - only show when not viewing archives */}
             {!showArchived && (
               <Link
-                to="/analytic-form-upload"
-                className="bg-[#080594] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#0a06b8] transition-colors flex items-center gap-2"
+                to="/afu"
+                className="bg-[#080594] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#060473] transition-colors flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -206,7 +319,7 @@ export default function AnalyticFormsList() {
         {/* Forms List */}
         {isLoading ? (
           <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-            <div className="animate-spin w-12 h-12 mx-auto border-4 border-[#08B7F6] border-t-transparent rounded-full mb-4"></div>
+            <div className="animate-spin w-12 h-12 mx-auto border-4 border-[#08b7f6] border-t-transparent rounded-full mb-4"></div>
             <p className="text-gray-500">Loading forms...</p>
           </div>
         ) : filteredForms.length === 0 ? (
@@ -238,7 +351,7 @@ export default function AnalyticFormsList() {
             {showArchived ? (
               <button
                 onClick={() => setShowArchived(false)}
-                className="inline-flex items-center gap-2 bg-[#08B7F6] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#069de8] transition-colors"
+                className="inline-flex items-center gap-2 bg-[#08b7f6] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#069DE8] transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -247,8 +360,8 @@ export default function AnalyticFormsList() {
               </button>
             ) : (
               <Link
-                to="/analytic-form-upload"
-                className="inline-flex items-center gap-2 bg-[#08B7F6] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#069de8] transition-colors"
+                to="/afu"
+                className="inline-flex items-center gap-2 bg-[#08b7f6] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#069DE8] transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -300,11 +413,54 @@ export default function AnalyticFormsList() {
 
                   <div className="flex items-center gap-2">
                     <Link
-                      to={`/analytic-form-login/${form.id}`}
-                      className="bg-[#080594] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#0a06b8] transition-colors text-sm"
+                      to={`/afl/${form.id}`}
+                      className="bg-[#080594] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#060473] transition-colors text-sm"
                     >
                       Open Form
                     </Link>
+
+                    {/* Theme Picker Button */}
+                    <button
+                      onClick={() => handleOpenThemePicker(form.id, form.themeColor)}
+                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      title="Change Theme"
+                    >
+                      {/* Show theme colors as two-color swatch */}
+                      <div className="flex rounded overflow-hidden border border-gray-300">
+                        <div
+                          className="w-3 h-5"
+                          style={{ backgroundColor: getThemeById(form.themeColor || "default").dark }}
+                        />
+                        <div
+                          className="w-3 h-5"
+                          style={{ backgroundColor: getThemeById(form.themeColor || "default").accent }}
+                        />
+                      </div>
+                    </button>
+
+                    {/* Logo Picker Button */}
+                    <button
+                      onClick={() => handleOpenLogoPicker(form.id, form.logo, form.themeColor)}
+                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      title="Change Logo"
+                    >
+                      {form.logo ? (
+                        <img
+                          src={form.logo}
+                          alt="Logo"
+                          className="w-5 h-5 object-contain"
+                        />
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      )}
+                    </button>
 
                     {/* Archive/Unarchive button - shown based on current view */}
                     {showArchived ? (
@@ -367,11 +523,110 @@ export default function AnalyticFormsList() {
 
         {/* Back to Home Link */}
         <div className="mt-8 text-center">
-          <Link to="/analytic-form-upload" className="text-[#08B7F6] hover:text-[#080594] font-semibold transition-colors">
+          <Link to="/afu" className="text-[#08b7f6] hover:text-[#080594] font-semibold transition-colors">
             &larr; Back to Home
           </Link>
         </div>
       </div>
+
+      {/* Theme Picker Modal */}
+      {themePickerFormId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Change Theme</h3>
+              <button
+                onClick={handleCloseThemePicker}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-gray-600 text-sm mb-4">
+              Select a theme for this form. The theme colors will be used for buttons, headers, and accents.
+            </p>
+
+            <ThemeSelector
+              value={tempTheme}
+              onChange={setTempTheme}
+              showLabel={false}
+            />
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCloseThemePicker}
+                className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-600 rounded-full font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTheme}
+                className="flex-1 px-4 py-3 text-white rounded-full font-semibold transition-colors"
+                style={{ backgroundColor: getThemeById(tempTheme).dark }}
+              >
+                Save Theme
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logo Picker Modal */}
+      {logoPickerFormId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Custom Logo</h3>
+              <button
+                onClick={handleCloseLogoPicker}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-gray-600 text-sm mb-4">
+              Upload a custom logo for this form. The logo will appear in the form header with your theme color.
+            </p>
+
+            <LogoPicker
+              value={tempLogo}
+              onChange={setTempLogo}
+              themeColor={getThemeById(logoPickerTheme).dark}
+              showLabel={false}
+            />
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCloseLogoPicker}
+                className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-600 rounded-full font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveLogo}
+                className="flex-1 px-4 py-3 text-white rounded-full font-semibold transition-colors"
+                style={{ backgroundColor: getThemeById(logoPickerTheme).dark }}
+              >
+                Save Logo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Theme Success Modal */}
+      <ThemeSuccessModal
+        isOpen={showThemeSuccessModal}
+        onClose={() => setShowThemeSuccessModal(false)}
+        themeId={savedThemeId}
+        themeName={getThemeById(savedThemeId).name}
+      />
     </div>
   );
 }

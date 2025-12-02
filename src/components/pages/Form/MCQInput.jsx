@@ -9,24 +9,39 @@ function MCQInput({ options, fun, name, initialValue = null }) {
     }
   }, [initialValue]);
 
-  const handleOptionChange = (event) => {
-    setSelectedOption(event.target.value);
-    fun(event.target.value)
+  const handleOptionChange = (option) => {
+    setSelectedOption(option);
+    fun(option);
+  };
+
+  // Style for selected radio - uses CSS variable that respects theme method (gradient/solid)
+  const selectedRadioStyle = {
+    background: 'var(--fill-selected)',
+    borderColor: 'var(--color-dark)',
+  };
+
+  const unselectedRadioStyle = {
+    background: 'white',
+    borderColor: '#d1d5db',
   };
 
   return (
     <div>
       {options.map((option) => (
-        <label key={option} className=" flex my-4 items-center opensans-regular text-[0.9rem] leading-[1.4rem] tab:text-[1.2rem] tab:leading-[2rem] mac:text-[1.1rem] mac:leading-[1.6rem] md:leading-[1.6rem] md:text-[1rem] text-[#2C2C2C] ">
-          <input
-            type="radio"
-            name={name}
-            value={option}
-            checked={selectedOption === option}
-            onChange={handleOptionChange}
-            className="mr-4  w-5 h-5 mt-[2px] text-[#080594]  cursor-pointer"
-            required
-          />
+        <label
+          key={option}
+          className="flex my-4 items-center opensans-regular text-[0.9rem] leading-[1.4rem] tab:text-[1.2rem] tab:leading-[2rem] mac:text-[1.1rem] mac:leading-[1.6rem] md:leading-[1.6rem] md:text-[1rem] text-[#2C2C2C] cursor-pointer"
+          onClick={() => handleOptionChange(option)}
+        >
+          {/* Custom Radio Button */}
+          <div
+            className="w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition-all duration-300 flex-shrink-0"
+            style={selectedOption === option ? selectedRadioStyle : unselectedRadioStyle}
+          >
+            {selectedOption === option && (
+              <div className="w-2 h-2 rounded-full bg-white" />
+            )}
+          </div>
           <div className='w-[70%] flex items-center opensans-regular'>{option}</div>
         </label>
       ))}

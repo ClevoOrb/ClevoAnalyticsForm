@@ -19,6 +19,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import useAnalyticForms from "../../../hooks/useAnalyticForms";
 import { supabase } from "../../../lib/supabase";
+import { applyTheme } from "../../common/ThemeSelector";
 
 export default function AnalyticFormLogin() {
   const AuthImg = "https://d2zcrs37ownl9k.cloudfront.net/asset/auth Image/Group 2.webp";
@@ -45,6 +46,11 @@ export default function AnalyticFormLogin() {
           console.log('AnalyticFormLogin: Form loaded:', config);
           setFormConfig(config);
 
+          // Apply the theme from form config
+          const themeId = config.theme_color || "default";
+          applyTheme(themeId);
+          console.log("Applied theme:", themeId);
+
           // Check if already logged in
           if (Cookies.get("analytic_clevo_id") && Cookies.get("analytic_clevo_code")) {
             const currentFormId = Cookies.get("analytic_form_id");
@@ -63,12 +69,12 @@ export default function AnalyticFormLogin() {
         } else {
           console.error('AnalyticFormLogin: Form not found');
           toast.error("Form not found. Please check the link or upload a new form.");
-          navigate("/analytic-form-upload");
+          navigate("/afu");
         }
       } catch (e) {
         console.error("Error loading form config from Supabase:", e);
         toast.error("Error loading form configuration");
-        navigate("/analytic-form-upload");
+        navigate("/afu");
       }
     };
 
@@ -205,7 +211,7 @@ export default function AnalyticFormLogin() {
               {/* Form Name Display */}
               {formConfig && (
                 <div className="mb-6 text-center tab:text-left">
-                  <span className="text-[#08B7F6] font-semibold text-lg">
+                  <span className="text-[#08b7f6] font-semibold text-lg">
                     {formConfig.name}
                   </span>
                 </div>

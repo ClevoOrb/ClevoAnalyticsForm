@@ -28,6 +28,8 @@ import AnalyticFormNavbar from "./AnalyticFormNavbar";
 import BackButton from "../../common/BackButton";
 import useAnalyticForms from "../../../hooks/useAnalyticForms";
 import useAnalyticResponses from "../../../hooks/useAnalyticResponses";
+import { applyTheme } from "../../common/ThemeSelector";
+import { applyThemeMethod } from "../../common/ThemeMethodSelector";
 
 // Use URL references instead of imports to avoid bundling large SVG files
 const Points = "/assets/point.svg";
@@ -76,6 +78,10 @@ export default function AnalyticFeedbackFormPost() {
   const streakTimeoutRef = useRef(null);
   const countdownIntervalRef = useRef(null);
 
+  // Button hover states for gradient effects
+  const [goBackHover, setGoBackHover] = useState(false);
+  const [doneHover, setDoneHover] = useState(false);
+
   const navigate = useNavigate();
 
   // Supabase hook for fetching forms
@@ -120,6 +126,17 @@ export default function AnalyticFeedbackFormPost() {
           setFormConfig(config);
           setJsonData(config.questions || []);
 
+          // Apply the theme from form config
+          const themeId = config.theme_color || "default";
+          const customColors = config.custom_colors || null;
+          applyTheme(themeId, customColors);
+          console.log("Applied theme:", themeId, customColors ? "with custom colors" : "");
+
+          // Apply the theme method from form config
+          const themeMethod = config.theme_method || "gradient";
+          applyThemeMethod(themeMethod);
+          console.log("Applied theme method:", themeMethod);
+
           // Build FilledIndexDict
           const dict = { "No Report Found": 0 };
           config.sections?.forEach((sectionName, idx) => {
@@ -136,11 +153,11 @@ export default function AnalyticFeedbackFormPost() {
           }
         } else {
           console.error('AnalyticFeedbackFormPost: Form not found');
-          navigate("/analytic-form-upload");
+          navigate("/afu");
         }
       } catch (e) {
         console.error("Error loading form config from Supabase:", e);
-        navigate("/analytic-form-upload");
+        navigate("/afu");
       }
     };
 
@@ -405,7 +422,7 @@ export default function AnalyticFeedbackFormPost() {
 
       const cookieClevoCode = Cookies.get("analytic_clevo_code");
       if (!cookieClevoCode) {
-        navigate(`/analytic-form-login/${formId}`, { replace: true });
+        navigate(`/afl/${formId}`, { replace: true });
         return;
       }
 
@@ -1213,7 +1230,11 @@ export default function AnalyticFeedbackFormPost() {
         sectionCoins={badgeModalData.coins}
         sectionStreaks={badgeModalData.streaks}
       />
-      <RewardsRulesModal isOpen={showRulesModal} onClose={() => setShowRulesModal(false)} />
+      <RewardsRulesModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+        themeId={formConfig?.theme_color || "default"}
+      />
       <AnalyticFormNavbar
         fixed={true}
         navbarVisible={navbarVisible}
@@ -1223,6 +1244,8 @@ export default function AnalyticFeedbackFormPost() {
         formId={formId}
         formName={formConfig?.name || "Analytics Form"}
         sectionsCount={formConfig?.sections?.length || 13}
+        logoPC={formConfig?.logo_pc || null}
+        logoMobile={formConfig?.logo_mobile || null}
       />
 
       <div className="pt-[7rem] tab:pt-[6rem] mac:pt-[4rem] w-[90%] tab:w-[94%] mac:w-[94%] mx-auto">
@@ -1233,7 +1256,7 @@ export default function AnalyticFeedbackFormPost() {
         </div>
         <div className="h-[0.8rem] bg-white border-[2px] mt-4 rounded-md">
           <div
-            className="h-full bg-[#08B7F6] rounded-l-md rounded-r-md"
+            className="h-full bg-[var(--color-accent)] rounded-l-md rounded-r-md"
             style={{
               width: `${currentQuestions.length > 0 ? (questionDone / currentQuestions.length) * 100 : 0}%`,
             }}
@@ -1265,7 +1288,7 @@ export default function AnalyticFeedbackFormPost() {
             </form>
           ) : (
             <div className="flex justify-center items-center min-h-[200px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#080594]"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-dark)]"></div>
             </div>
           )}
         </div>
@@ -1274,8 +1297,15 @@ export default function AnalyticFeedbackFormPost() {
         <div className="w-[90%] tab:w-[94%] mx-auto flex justify-between">
           <div>
             <BackButton
-              className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] hover:bg-[#080594] hover:text-white border-[#080594] uppercase text-[#080594] transition-all"
+              className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] uppercase transition-all"
               fallbackPath={`/analytic-form/${formId}`}
+              style={{
+                background: goBackHover ? 'var(--fill-selected)' : 'transparent',
+                borderColor: 'var(--color-dark)',
+                color: goBackHover ? 'text-var(--color-dark)' : 'var(--color-dark)',
+              }}
+              onMouseEnter={() => setGoBackHover(true)}
+              onMouseLeave={() => setGoBackHover(false)}
             >
               Go Back
             </BackButton>
@@ -1283,7 +1313,14 @@ export default function AnalyticFeedbackFormPost() {
           {subQDone && questionDone === currentQuestions.length ? (
             <button
               onClick={() => setModal(true)}
-              className="text-[15px] px-10 py-4 opensans-bold bg-[#080594] rounded-full uppercase text-white hover:text-[#080594] hover:bg-white border-[3px] border-[#080594] transition-all"
+              className="text-[15px] px-10 py-4 opensans-bold rounded-full uppercase text-var(--color-dark) border-[3px] transition-all"
+              style={{
+                background: doneHover ? 'var(--fill-selected-hover)' : 'var(--fill-selected)',
+                borderColor: 'var(--color-dark)',
+                color: doneHover ? 'white' : 'var(--color-dark)',
+              }}
+              onMouseEnter={() => setDoneHover(true)}
+              onMouseLeave={() => setDoneHover(false)}
             >
               done
             </button>

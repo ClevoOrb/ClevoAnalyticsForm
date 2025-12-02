@@ -30,6 +30,8 @@ const AnalyticFormNavbar = ({
   formId,
   formName = "Analytics Form",
   sectionsCount = 13, // Number of sections in the form (passed from parent)
+  logoPC = null, // Custom logo for PC/Desktop (base64 string or URL)
+  logoMobile = null, // Custom logo for Mobile (base64 string or URL)
 }) => {
   const navigate = useNavigate();
 
@@ -94,8 +96,9 @@ const AnalyticFormNavbar = ({
   const [streakCelebrating, setStreakCelebrating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const logoMobile = "https://d2zcrs37ownl9k.cloudfront.net/asset/orbFormLogo.svg";
-  const logoPC = "https://d2zcrs37ownl9k.cloudfront.net/asset/Logo.png";
+  // Default logos
+  const defaultLogoPC = "/assets/Logo1.svg";
+  const defaultLogoMobile = "/assets/LogoMobile.svg";
 
   // Navigate to form home page
   const handleLogoClick = () => {
@@ -250,27 +253,44 @@ const AnalyticFormNavbar = ({
   const cappedBadges = Math.min(totalBadges, maxSections);
   const badgesToShow = `${cappedBadges}/${maxSections}`;
 
-  const baseClasses = `w-full tab:h-[6.5rem] mac:h-[4rem] bg-[#080594] flex items-center ${className}`;
+  const baseClasses = `w-full tab:h-[8.5rem] mac:h-[4rem] flex items-center ${className}`;
   const navbarClasses = fixed
-    ? `${baseClasses} fixed top-0 left-0 z-40 transition-transform duration-300 ${
-        navbarVisible ? "translate-y-0" : "-translate-y-full"
-      }`
+    ? `${baseClasses} fixed top-0 left-0 z-40 transition-transform duration-300 ${navbarVisible ? "translate-y-0" : "-translate-y-full"
+    }`
     : `${baseClasses} z-10`;
 
   return (
     <>
-      <div className={navbarClasses}>
+      <div className={`${navbarClasses} bg-[var(--color-dark)]`}>
         <div className="w-[90%] tab:w-[94%] mac:w-[95%] mx-auto h-full">
           {/* Desktop Layout (tab and above) - Logo and Title Only */}
           <div className="hidden mac:flex items-center h-full">
             <div className="flex items-center justify-center gap-4 w-full relative">
               <button
                 onClick={handleLogoClick}
-                className="w-fit hover:opacity-80 transition-opacity duration-200 absolute left-0"
+                className="w-fit hover:opacity-80 transition-opacity duration-200 absolute left-0 h-full flex items-center justify-end gap-x-4"
                 title="Go to Form Home"
               >
-                <img src={logoMobile} className="mac:hidden" />
-                <img src={logoPC} className="hidden mac:flex w-[50%] mac:w-[25%] xxl:w-[25%]" />
+                {/* Default Logo - PC */}
+                <img
+                  src={defaultLogoPC}
+                  className="h-[2.5rem] w-auto max-w-[150px] object-contain"
+                  alt="Default Logo"
+                />
+                {/* Show X icon and Custom PC Logo if provided */}
+                {logoPC && (
+                  <div className="flex items-center gap-x-3">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    <img
+                      src={logoPC}
+                      className="h-[2.5rem] w-auto max-w-[150px] object-contain"
+                      alt="Custom Logo"
+                    />
+                  </div>
+                )}
               </button>
               <div className="text-[1rem] leading-[1.5rem] tab:text-[1.3rem] tab:leading-[2.1rem] mac:text-[1.2rem] mac:leading-[1.7rem] md:leading-[1.7rem] md:text-[1.1rem] xxl:text-[1.3rem] text-white arca">
                 {formName.toUpperCase()}
@@ -283,10 +303,29 @@ const AnalyticFormNavbar = ({
             <div className="flex items-center w-full mb-3 relative">
               <button
                 onClick={handleLogoClick}
-                className="w-fit hover:opacity-80 transition-opacity duration-200"
+                className="w-fit hover:opacity-80 transition-opacity duration-200 flex items-center gap-2"
                 title="Go to Form Home"
               >
-                <img src={logoMobile} className="w-10 h-10" />
+                {/* Default Logo - Mobile */}
+                <img
+                  src={defaultLogoMobile}
+                  className="h-8 tab:h-10 w-auto max-w-[100px] tab:max-w-[120px] object-contain"
+                  alt="Default Logo"
+                />
+                {/* Show X icon and Custom Mobile Logo if provided */}
+                {logoMobile && (
+                  <div className="flex items-center gap-x-2">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    <img
+                      src={logoMobile}
+                      className="h-10 tab:h-12 w-auto max-w-[100px] tab:max-w-[120px] object-contain"
+                      alt="Custom Logo"
+                    />
+                  </div>
+                )}
               </button>
               <div className="absolute left-1/2 transform -translate-x-1/2 text-[0.9rem] leading-[1.2rem] text-white arca tab:text-[1.1rem] tab:leading-[1.5rem]">
                 {formName.toUpperCase()}
@@ -366,7 +405,7 @@ const AnalyticFormNavbar = ({
                 {onRulesClick && (
                   <button
                     onClick={onRulesClick}
-                    className="bg-white text-[#080594] w-6 h-6 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors font-bold text-sm"
+                    className="bg-white w-6 h-6 rounded-full flex items-center justify-center hover:opacity-80 transition-colors font-bold text-sm text-[var(--color-dark)]"
                     title="Rewards Rules"
                   >
                     ?
@@ -414,11 +453,10 @@ const AnalyticFormNavbar = ({
 
             {/* Streaks counter */}
             <motion.div
-              className={`px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 border ${
-                totalStreaks > 0
-                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 border-emerald-300"
-                  : "bg-gradient-to-r from-slate-400 to-slate-500 border-slate-300"
-              }`}
+              className={`px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 border ${totalStreaks > 0
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 border-emerald-300"
+                : "bg-gradient-to-r from-slate-400 to-slate-500 border-slate-300"
+                }`}
               animate={{
                 scale: streakCelebrating ? [1, 1.3, 1.1, 1] : 1,
                 rotate: streakCelebrating ? [0, 5, -5, 0] : 0,
@@ -468,7 +506,7 @@ const AnalyticFormNavbar = ({
             {onRulesClick && (
               <button
                 onClick={onRulesClick}
-                className="bg-white text-[#080594] w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors font-bold text-lg border-2 border-[#080594]"
+                className="bg-white w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-colors font-bold text-lg border-2 text-[var(--color-dark)] border-[var(--color-dark)]"
                 title="Rewards Rules"
               >
                 ?

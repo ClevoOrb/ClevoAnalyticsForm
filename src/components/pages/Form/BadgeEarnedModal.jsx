@@ -56,7 +56,7 @@ const BadgeEarnedModal = ({ isOpen, onClose, sectionName, sectionCoins, sectionS
 
         <button
           onClick={onClose}
-          className="bg-white text-[#080594] px-8 py-3 rounded-full font-bold text-lg hover:bg-blue-50 transition-all transform hover:scale-105 opensans-bold border-2 border-[#080594]/20"
+          className="bg-white text-[var(--color-dark)] px-8 py-3 rounded-full font-bold text-lg hover:bg-blue-50 transition-all transform hover:scale-105 opensans-bold border-2 border-[var(--color-dark)]/20"
         >
           Continue Health Assessment
         </button>
