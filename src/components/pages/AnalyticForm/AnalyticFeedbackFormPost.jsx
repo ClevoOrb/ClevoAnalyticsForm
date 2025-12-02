@@ -105,7 +105,7 @@ export default function AnalyticFeedbackFormPost() {
 
   // Simple rewards constants
   const COINS_PER_QUESTION = 100;
-  const BONUS_FOR_5_STREAKS = 200;
+  const BONUS_FOR_5_STREAKS = 100; // +100 bonus at milestones (total = 200 with regular 100)
   const STREAK_TIME_LIMIT = 3 * 60 * 1000; // 3 minutes
   const WARNING_TIME = (2 * 60 + 50) * 1000; // 2 minutes 50 seconds
 
