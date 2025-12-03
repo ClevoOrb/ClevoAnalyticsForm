@@ -27,6 +27,8 @@ const ARCHIVED_FORMS_KEY = 'archived_form_ids';
 export default function AnalyticFormsList() {
   const [forms, setForms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Search term for filtering forms by name
+  const [searchTerm, setSearchTerm] = useState("");
   // Toggle to show archived forms or active forms
   const [showArchived, setShowArchived] = useState(false);
   // List of archived form IDs (stored in localStorage)
@@ -34,6 +36,7 @@ export default function AnalyticFormsList() {
   // State for theme picker modal
   const [themePickerFormId, setThemePickerFormId] = useState(null);
   const [tempTheme, setTempTheme] = useState("default");
+  const [tempThemeMethod, setTempThemeMethod] = useState("solid"); // "gradient" or "solid"
   // State for logo picker modal
   const [logoPickerFormId, setLogoPickerFormId] = useState(null);
   const [tempLogo, setTempLogo] = useState(null);
@@ -144,9 +147,10 @@ export default function AnalyticFormsList() {
   /**
    * Open theme picker for a form
    */
-  const handleOpenThemePicker = (formId, currentTheme) => {
+  const handleOpenThemePicker = (formId, currentTheme, currentThemeMethod) => {
     setThemePickerFormId(formId);
     setTempTheme(currentTheme || "default");
+    setTempThemeMethod(currentThemeMethod || "solid");
   };
 
   /**
@@ -155,23 +159,24 @@ export default function AnalyticFormsList() {
   const handleCloseThemePicker = () => {
     setThemePickerFormId(null);
     setTempTheme("default");
+    setTempThemeMethod("solid");
   };
 
   /**
-   * Save the new theme for a form
+   * Save the new theme and fill style for a form
    */
   const handleSaveTheme = async () => {
     if (!themePickerFormId) return;
 
     try {
-      // updateFormColor still works - we store theme ID in themeColor field
-      const success = await updateFormColor(themePickerFormId, tempTheme);
+      // Update both theme color and method
+      const success = await updateFormColor(themePickerFormId, tempTheme, tempThemeMethod);
 
       if (success) {
         // Update local state
         setForms(forms.map(form =>
           form.id === themePickerFormId
-            ? { ...form, themeColor: tempTheme }
+            ? { ...form, themeColor: tempTheme, themeMethod: tempThemeMethod }
             : form
         ));
         // Show success modal for non-default themes
@@ -237,13 +242,20 @@ export default function AnalyticFormsList() {
   };
 
   /**
-   * Filter forms based on archive status
+   * Filter forms based on archive status and search term
    * - If showArchived is true: show only archived forms
    * - If showArchived is false: show only non-archived forms
+   * - Also filters by search term (case-insensitive name match)
    */
   const filteredForms = forms.filter(form => {
     const isArchived = isFormArchived(form.id);
-    return showArchived ? isArchived : !isArchived;
+    const matchesArchiveFilter = showArchived ? isArchived : !isArchived;
+
+    // Check if form name matches search term (case-insensitive)
+    const matchesSearch = searchTerm.trim() === ""
+      || form.name.toLowerCase().includes(searchTerm.toLowerCase().trim());
+
+    return matchesArchiveFilter && matchesSearch;
   });
 
   // Count of archived forms (for badge display)
@@ -316,6 +328,52 @@ export default function AnalyticFormsList() {
           </div>
         </div>
 
+        {/* Search Input */}
+        <div className="mb-6">
+          <div className="relative">
+            {/* Search Icon */}
+            <svg
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            {/* Search Input Field */}
+            <input
+              type="text"
+              placeholder="Search forms by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-10 py-3 border-2 border-gray-200 rounded-full focus:border-[#08b7f6] focus:outline-none transition-colors text-gray-700"
+            />
+            {/* Clear Button - shown only when there's text */}
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title="Clear search"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {/* Search Results Count - shown when searching */}
+          {searchTerm && (
+            <p className="text-sm text-gray-500 mt-2 ml-4">
+              Found {filteredForms.length} {filteredForms.length === 1 ? "form" : "forms"} matching "{searchTerm}"
+            </p>
+          )}
+        </div>
+
         {/* Forms List */}
         {isLoading ? (
           <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
@@ -334,21 +392,39 @@ export default function AnalyticFormsList() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={1.5}
-                d={showArchived
-                  ? "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                  : "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                d={searchTerm
+                  ? "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  : showArchived
+                    ? "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                    : "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 }
               />
             </svg>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              {showArchived ? "No Archived Forms" : "No Forms Created Yet"}
+              {searchTerm
+                ? "No Forms Found"
+                : showArchived
+                  ? "No Archived Forms"
+                  : "No Forms Created Yet"}
             </h3>
             <p className="text-gray-500 mb-6">
-              {showArchived
-                ? "You haven't archived any forms yet. Archive forms from the main list to see them here."
-                : "Upload an Excel file with questions to create your first analytics form."}
+              {searchTerm
+                ? `No forms match "${searchTerm}". Try a different search term.`
+                : showArchived
+                  ? "You haven't archived any forms yet. Archive forms from the main list to see them here."
+                  : "Upload an Excel file with questions to create your first analytics form."}
             </p>
-            {showArchived ? (
+            {searchTerm ? (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="inline-flex items-center gap-2 bg-[#08b7f6] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#069DE8] transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear Search
+              </button>
+            ) : showArchived ? (
               <button
                 onClick={() => setShowArchived(false)}
                 className="inline-flex items-center gap-2 bg-[#08b7f6] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#069DE8] transition-colors"
@@ -421,7 +497,7 @@ export default function AnalyticFormsList() {
 
                     {/* Theme Picker Button */}
                     <button
-                      onClick={() => handleOpenThemePicker(form.id, form.themeColor)}
+                      onClick={() => handleOpenThemePicker(form.id, form.themeColor, form.themeMethod)}
                       className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                       title="Change Theme"
                     >
@@ -552,6 +628,8 @@ export default function AnalyticFormsList() {
             <ThemeSelector
               value={tempTheme}
               onChange={setTempTheme}
+              themeMethod={tempThemeMethod}
+              onThemeMethodChange={setTempThemeMethod}
               showLabel={false}
             />
 

@@ -29,7 +29,7 @@ const AnalyticFormNavbar = ({
   warningCountdown = 10,
   formId,
   formName = "Analytics Form",
-  sectionsCount = 13, // Number of sections in the form (passed from parent)
+  sectionsCount = 0, // Number of sections in the form (passed from parent, always dynamic)
   logoPC = null, // Custom logo for PC/Desktop (base64 string or URL)
   logoMobile = null, // Custom logo for Mobile (base64 string or URL)
 }) => {

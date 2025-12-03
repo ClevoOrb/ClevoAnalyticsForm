@@ -14,7 +14,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// Top 8 predefined themes with their colors and names
+// Top 14 predefined themes with their colors and names
 const TOP_THEMES = [
   { id: "default", name: "Blue Cyan", dark: "#080594", accent: "#08b7f6" },
   { id: "forest", name: "Green Sage", dark: "#283618", accent: "#52b788" },
@@ -24,6 +24,12 @@ const TOP_THEMES = [
   { id: "blush", name: "Navy Gold", dark: "#0a174e", accent: "#f5d042" },
   { id: "electric", name: "Black Blue", dark: "#080708", accent: "#3772ff" },
   { id: "aqua", name: "Indigo Lime", dark: "#4831D4", accent: "#CCF381" },
+  { id: "sunset", name: "Orange Blue", dark: "#0000ff", accent: "#ffa500" },
+  { id: "cherry", name: "Red Pink", dark: "#CC313D", accent: "#F7C5CC" },
+  { id: "tropical", name: "Mint Navy", dark: "#202d79", accent: "#7ce7be" },
+  { id: "vivid", name: "Purple Peach", dark: "#4e0bd9", accent: "#f79765" },
+  { id: "rose", name: "Pink Blush", dark: "#e27396", accent: "#efcfe3" },
+  { id: "mono", name: "Black Gray", dark: "#000000", accent: "#c5c3c6" },
 ];
 
 // Keep all themes for backwards compatibility (getThemeById)
@@ -91,6 +97,8 @@ export default function ThemeSelector({
   value = "default",
   customColors = null, // { dark: "#hex", accent: "#hex" } for custom themes
   onChange,
+  themeMethod = "solid", // "gradient" or "solid" (solid by default)
+  onThemeMethodChange, // callback when theme method changes
   label = "Theme",
   showLabel = true
 }) {
@@ -104,6 +112,13 @@ export default function ThemeSelector({
   const currentTheme = value === "custom"
     ? { id: "custom", name: "Custom", dark: customDark, accent: customAccent }
     : getThemeById(value);
+
+  // Handle theme method change
+  const handleThemeMethodChange = (method) => {
+    if (onThemeMethodChange) {
+      onThemeMethodChange(method);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -269,6 +284,53 @@ export default function ThemeSelector({
           {/* Divider */}
           <div className="border-t border-gray-200 my-4" />
 
+          {/* Fill Style Toggle - Gradient/Solid */}
+          {onThemeMethodChange && (
+            <>
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
+                Fill Style
+              </p>
+              <div className="flex gap-3 mb-4">
+                {/* Gradient Option */}
+                <button
+                  type="button"
+                  onClick={() => handleThemeMethodChange("gradient")}
+                  className={`flex-1 p-3 rounded-xl border-2 transition-all ${
+                    themeMethod === "gradient"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div
+                    className="h-6 rounded-lg mb-2"
+                    style={{ background: `linear-gradient(135deg, ${currentTheme.dark}, ${currentTheme.accent})` }}
+                  />
+                  <p className="text-sm font-medium text-gray-700">Gradient</p>
+                </button>
+
+                {/* Solid Option */}
+                <button
+                  type="button"
+                  onClick={() => handleThemeMethodChange("solid")}
+                  className={`flex-1 p-3 rounded-xl border-2 transition-all ${
+                    themeMethod === "solid"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div
+                    className="h-6 rounded-lg mb-2"
+                    style={{ background: currentTheme.dark }}
+                  />
+                  <p className="text-sm font-medium text-gray-700">Solid</p>
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-200 my-4" />
+            </>
+          )}
+
           {/* Custom Palette Generator Section */}
           <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
             Custom Palette
@@ -372,43 +434,7 @@ export default function ThemeSelector({
               {isCustomMode ? "Custom Theme Applied" : "Apply Custom Theme"}
             </button>
           </div>
-
-          {/* Button Preview Section */}
-          <div className="border-t border-gray-100 pt-4 mt-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-              Button Preview
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="flex-1 py-2 px-4 rounded-full text-white text-sm font-semibold"
-                style={{ backgroundColor: currentTheme.dark }}
-              >
-                Primary
-              </button>
-              <button
-                type="button"
-                className="flex-1 py-2 px-4 rounded-full text-sm font-semibold border-2"
-                style={{
-                  borderColor: currentTheme.dark,
-                  color: currentTheme.dark,
-                  backgroundColor: "white"
-                }}
-              >
-                Outline
-              </button>
-              <button
-                type="button"
-                className="flex-1 py-2 px-4 rounded-full text-sm font-semibold"
-                style={{
-                  backgroundColor: currentTheme.accent,
-                  color: isLightColor(currentTheme.accent) ? "#333" : "#fff"
-                }}
-              >
-                Accent
-              </button>
-            </div>
-          </div>
+        
         </div>
       )}
     </div>

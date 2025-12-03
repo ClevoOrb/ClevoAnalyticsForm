@@ -133,7 +133,7 @@ export default function AnalyticFeedbackFormPost() {
           console.log("Applied theme:", themeId, customColors ? "with custom colors" : "");
 
           // Apply the theme method from form config
-          const themeMethod = config.theme_method || "gradient";
+          const themeMethod = config.theme_method || "solid";
           applyThemeMethod(themeMethod);
           console.log("Applied theme method:", themeMethod);
 
@@ -957,41 +957,51 @@ export default function AnalyticFeedbackFormPost() {
           const currentCoins = sectionCoins + COINS_PER_QUESTION;
           const currentAnswered = new Set([...answeredQuestions, parseInt(newQuestionIndex)]);
 
-          let bonusCoins = 0;
+          // IMPORTANT FIX: Update localStorage SYNCHRONOUSLY (not inside setTimeout or setState)
+          // This fixes the race condition where finalSubmit could read stale/zero values
+          // Previously, localStorage was updated inside setTimeout + setStreakCount callback,
+          // which meant React could delay the execution and finalSubmit would read old values
+          const globalRewardsKey = `analytic_rewards_${formId}_${Cookies.get("analytic_clevo_code")}`;
+          const existingGlobalRewards = localStorage.getItem(globalRewardsKey);
+          const currentGlobal = existingGlobalRewards
+            ? JSON.parse(existingGlobalRewards)
+            : { coins: 0, badges: 0, streaks: 0 };
 
-          setTimeout(() => {
-            setStreakCount((currentStreak) => {
-              bonusCoins = currentStreak % 5 === 0 && currentStreak > 0 ? BONUS_FOR_5_STREAKS : 0;
+          // Calculate the new streak value based on timing
+          // This mirrors the logic in setLastAnswerTime above
+          let newStreakValue = currentGlobal.streaks;
+          if (lastAnswerTime !== null) {
+            const timeGap = now - lastAnswerTime;
+            if (timeGap <= STREAK_TIME_LIMIT) {
+              newStreakValue = currentGlobal.streaks + 1;
+            } else {
+              newStreakValue = 0; // Streak broken due to timeout
+            }
+          }
+          // Note: First question (lastAnswerTime === null) doesn't increment streak
 
-              const globalRewardsKey = `analytic_rewards_${formId}_${Cookies.get("analytic_clevo_code")}`;
-              const existingGlobalRewards = localStorage.getItem(globalRewardsKey);
-              const currentGlobal = existingGlobalRewards
-                ? JSON.parse(existingGlobalRewards)
-                : { coins: 0, badges: 0, streaks: 0 };
+          // Calculate bonus for streak milestones (every 5 streaks)
+          const bonusCoins = (newStreakValue % 5 === 0 && newStreakValue > 0) ? BONUS_FOR_5_STREAKS : 0;
 
-              const updatedGlobalRewards = {
-                coins: currentGlobal.coins + COINS_PER_QUESTION + bonusCoins,
-                badges: currentGlobal.badges,
-                streaks: currentStreak,
-                lastUpdated: now,
-              };
+          const updatedGlobalRewards = {
+            coins: currentGlobal.coins + COINS_PER_QUESTION + bonusCoins,
+            badges: currentGlobal.badges,
+            streaks: newStreakValue,
+            lastUpdated: now,
+          };
 
-              localStorage.setItem(globalRewardsKey, JSON.stringify(updatedGlobalRewards));
-              console.log("Updated global rewards:", updatedGlobalRewards);
+          localStorage.setItem(globalRewardsKey, JSON.stringify(updatedGlobalRewards));
+          console.log("Updated global rewards (sync):", updatedGlobalRewards);
 
-              const sectionRewardsKey = `analytic_section_rewards_${formId}_${Cookies.get("analytic_clevo_code")}_${id}`;
-              const rewardsData = {
-                coins: currentCoins + bonusCoins,
-                answeredQs: Array.from(currentAnswered),
-                completed: false,
-                ttl: Date.now(),
-              };
-              localStorage.setItem(sectionRewardsKey, JSON.stringify(rewardsData));
-              console.log("Saved section rewards with TTL:", rewardsData);
-
-              return currentStreak;
-            });
-          }, 0);
+          const sectionRewardsKey = `analytic_section_rewards_${formId}_${Cookies.get("analytic_clevo_code")}_${id}`;
+          const rewardsData = {
+            coins: currentCoins + bonusCoins,
+            answeredQs: Array.from(currentAnswered),
+            completed: false,
+            ttl: Date.now(),
+          };
+          localStorage.setItem(sectionRewardsKey, JSON.stringify(rewardsData));
+          console.log("Saved section rewards with TTL (sync):", rewardsData);
         } else if (alreadyAwarded) {
           console.log(`Question ${newQuestionIndex} already awarded - skipping`);
         }
@@ -1243,7 +1253,7 @@ export default function AnalyticFeedbackFormPost() {
         warningCountdown={warningCountdown}
         formId={formId}
         formName={formConfig?.name || "Analytics Form"}
-        sectionsCount={formConfig?.sections?.length || 13}
+        sectionsCount={formConfig?.sections?.length || 0}
         logoPC={formConfig?.logo_pc || null}
         logoMobile={formConfig?.logo_mobile || null}
       />
@@ -1282,6 +1292,7 @@ export default function AnalyticFeedbackFormPost() {
                     mainq={mainqUpdater}
                     subQ={subQupdater}
                     initialData={questionInitialData}
+                    themeMethod={formConfig?.theme_method || "solid"}
                   />
                 );
               })}
@@ -1300,9 +1311,13 @@ export default function AnalyticFeedbackFormPost() {
               className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] uppercase transition-all"
               fallbackPath={`/analytic-form/${formId}`}
               style={{
-                background: goBackHover ? 'var(--fill-selected)' : 'transparent',
+                background: goBackHover
+                  ? (formConfig?.theme_method === 'gradient'
+                    ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+                    : 'var(--color-dark)')
+                  : 'transparent',
                 borderColor: 'var(--color-dark)',
-                color: goBackHover ? 'text-var(--color-dark)' : 'var(--color-dark)',
+                color: goBackHover ? 'white' : 'var(--color-dark)',
               }}
               onMouseEnter={() => setGoBackHover(true)}
               onMouseLeave={() => setGoBackHover(false)}
@@ -1313,11 +1328,13 @@ export default function AnalyticFeedbackFormPost() {
           {subQDone && questionDone === currentQuestions.length ? (
             <button
               onClick={() => setModal(true)}
-              className="text-[15px] px-10 py-4 opensans-bold rounded-full uppercase text-var(--color-dark) border-[3px] transition-all"
+              className="text-[15px] px-10 py-4 opensans-bold rounded-full uppercase border-[3px] transition-all"
               style={{
-                background: doneHover ? 'var(--fill-selected-hover)' : 'var(--fill-selected)',
+                background: formConfig?.theme_method === 'gradient'
+                  ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+                  : 'var(--color-dark)',
                 borderColor: 'var(--color-dark)',
-                color: doneHover ? 'white' : 'var(--color-dark)',
+                color: 'white',
               }}
               onMouseEnter={() => setDoneHover(true)}
               onMouseLeave={() => setDoneHover(false)}

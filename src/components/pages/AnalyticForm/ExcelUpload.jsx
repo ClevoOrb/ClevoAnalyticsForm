@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import LoadingScreen from "../Form/LoadingScreen";
 import useAnalyticForms from "../../../hooks/useAnalyticForms";
 import ThemeSelector, { getThemeById, applyTheme } from "../../common/ThemeSelector";
-import ThemeMethodSelector, { applyThemeMethod } from "../../common/ThemeMethodSelector";
+// ThemeMethodSelector is now integrated inside ThemeSelector
 import LogoPicker from "../../common/LogoPicker";
 import FormPreview from "../../common/FormPreview";
 import ThemeSuccessModal from "../../common/ThemeSuccessModal";
@@ -147,7 +147,7 @@ export default function ExcelUpload() {
   const [formName, setFormName] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("default"); // Theme ID or "custom"
   const [customColors, setCustomColors] = useState(null); // { dark: "#hex", accent: "#hex" } for custom themes
-  const [selectedThemeMethod, setSelectedThemeMethod] = useState("gradient"); // Theme fill method
+  const [selectedThemeMethod, setSelectedThemeMethod] = useState("solid"); // Theme fill method (solid by default)
   const [logoPC, setLogoPC] = useState(null); // Custom logo for PC/Desktop (base64)
   const [logoMobile, setLogoMobile] = useState(null); // Custom logo for Mobile (base64)
   const [createdFormId, setCreatedFormId] = useState(null);
@@ -544,31 +544,14 @@ export default function ExcelUpload() {
                     />
                   </div>
 
-                  {/* Theme Selector */}
+                  {/* Theme Selector with Fill Style Toggle */}
                   <ThemeSelector
                     value={selectedTheme}
                     customColors={customColors}
                     onChange={handleThemeChange}
+                    themeMethod={selectedThemeMethod}
+                    onThemeMethodChange={setSelectedThemeMethod}
                     label="Select Theme"
-                  />
-
-                  {/* Theme Method Selector */}
-                  <ThemeMethodSelector
-                    value={selectedThemeMethod}
-                    onChange={setSelectedThemeMethod}
-                    themeColor={getCurrentThemeColors().dark}
-                    accentColor={getCurrentThemeColors().accent}
-                    label="Fill Style"
-                  />
-
-                  {/* Custom Logo Picker - PC and Mobile */}
-                  <LogoPicker
-                    logoPC={logoPC}
-                    logoMobile={logoMobile}
-                    onChangePC={setLogoPC}
-                    onChangeMobile={setLogoMobile}
-                    themeColor={getCurrentThemeColors().dark}
-                    label="Custom Logos (Optional)"
                   />
 
                   {/* Live Form Preview */}
@@ -585,6 +568,17 @@ export default function ExcelUpload() {
                       formName={formName}
                     />
                   </div>
+
+                  {/* Custom Logo Picker - PC and Mobile */}
+                  <LogoPicker
+                    logoPC={logoPC}
+                    logoMobile={logoMobile}
+                    onChangePC={setLogoPC}
+                    onChangeMobile={setLogoMobile}
+                    themeColor={getCurrentThemeColors().dark}
+                    label="Custom Logos (Optional)"
+                  />
+
 
                   {/* File Upload Section */}
                   <div>
@@ -604,11 +598,10 @@ export default function ExcelUpload() {
                     {/* Custom upload area */}
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${
-                        fileName
+                      className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${fileName
                           ? "border-green-400 bg-green-50 hover:bg-green-100"
                           : "border-gray-300 bg-gray-50 hover:border-[#08b7f6] hover:bg-blue-50"
-                      }`}
+                        }`}
                     >
                       {fileName ? (
                         <div className="text-center">
@@ -647,11 +640,10 @@ export default function ExcelUpload() {
                   <button
                     type="submit"
                     disabled={!uploadedData || !formName.trim()}
-                    className={`w-full py-4 font-bold rounded-xl text-base uppercase tracking-wide transition-all duration-300 ${
-                      uploadedData && formName.trim()
+                    className={`w-full py-4 font-bold rounded-xl text-base uppercase tracking-wide transition-all duration-300 ${uploadedData && formName.trim()
                         ? "bg-gradient-to-r from-[#080594] to-[#08b7f6] text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     {uploadedData && formName.trim() ? (
                       <span className="flex items-center justify-center gap-2">

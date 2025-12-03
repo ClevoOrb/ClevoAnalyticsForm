@@ -96,7 +96,7 @@ export default function AnalyticFeedbackForm() {
           console.log("Applied theme:", themeId, customColors ? "with custom colors" : "");
 
           // Apply the theme method from form config
-          const themeMethod = config.theme_method || "gradient";
+          const themeMethod = config.theme_method || "solid";
           applyThemeMethod(themeMethod);
           console.log("Applied theme method:", themeMethod);
 
@@ -432,7 +432,7 @@ export default function AnalyticFeedbackForm() {
           warningCountdown={warningCountdown}
           formId={formId}
           formName={formConfig?.name || "Analytics Form"}
-          sectionsCount={formConfig?.sections?.length || 13}
+          sectionsCount={formConfig?.sections?.length || 0}
           logoPC={formConfig?.logo_pc || null}
           logoMobile={formConfig?.logo_mobile || null}
         />
@@ -526,9 +526,13 @@ export default function AnalyticFeedbackForm() {
             onClick={handleLogout}
             className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] uppercase transition-all"
             style={{
-              background: logoutHover ? 'var(--fill-selected)' : 'transparent',
+              background: logoutHover
+                ? (formConfig?.theme_method === 'gradient'
+                  ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+                  : 'var(--color-dark)')
+                : 'transparent',
               borderColor: 'var(--color-dark)',
-              color: logoutHover ? 'text-var(--color-dark)' : 'var(--color-dark)',
+              color: logoutHover ? 'white' : 'var(--color-dark)',
             }}
             onMouseEnter={() => setLogoutHover(true)}
             onMouseLeave={() => setLogoutHover(false)}
@@ -552,10 +556,13 @@ export default function AnalyticFeedbackForm() {
                 navigate("/", { replace: true });
               }, 2000);
             }}
-            className="text-[15px] px-10 py-4 opensans-bold rounded-full uppercase text-var(--color-dark) border-[3px] transition-all"
+            className="text-[15px] px-10 py-4 opensans-bold rounded-full uppercase border-[3px] transition-all"
             style={{
-              background: doneHover ? 'var(--fill-selected-hover)' : 'var(--fill-selected)',
+              background: formConfig?.theme_method === 'gradient'
+                ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+                : 'var(--color-dark)',
               borderColor: 'var(--color-dark)',
+              color: 'white',
             }}
             onMouseEnter={() => setDoneHover(true)}
             onMouseLeave={() => setDoneHover(false)}

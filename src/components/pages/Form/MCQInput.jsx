@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function MCQInput({ options, fun, name, initialValue = null }) {
+function MCQInput({ options, fun, name, initialValue = null, themeMethod = 'solid' }) {
   const [selectedOption, setSelectedOption] = useState(initialValue);
 
   useEffect(() => {
@@ -14,9 +14,11 @@ function MCQInput({ options, fun, name, initialValue = null }) {
     fun(option);
   };
 
-  // Style for selected radio - uses CSS variable that respects theme method (gradient/solid)
+  // Style for selected radio - gradient or solid based on themeMethod
   const selectedRadioStyle = {
-    background: 'var(--fill-selected)',
+    background: themeMethod === 'gradient'
+      ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+      : 'var(--color-dark)',
     borderColor: 'var(--color-dark)',
   };
 

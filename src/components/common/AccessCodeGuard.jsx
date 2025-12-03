@@ -59,6 +59,9 @@ export default function AccessCodeGuard({ children }) {
     return children;
   }
 
+  // Default palette colors - admin page always uses these
+  const defaultDark = "#080594";
+
   // If not verified, show the access code entry form
   // This UI is styled to match the existing AnalyticFormLogin page
   return (
@@ -66,7 +69,7 @@ export default function AccessCodeGuard({ children }) {
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[var(--color-dark)] rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: defaultDark }}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-8 w-8 text-white"
@@ -128,7 +131,7 @@ export default function AccessCodeGuard({ children }) {
                 }
               }}
               placeholder="Enter 6-digit code"
-              className="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-dark)] focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#080594] focus:border-transparent outline-none transition-all"
               required
               autoFocus
             />
@@ -141,11 +144,12 @@ export default function AccessCodeGuard({ children }) {
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* Submit Button - always uses default palette */}
           <button
             type="submit"
             disabled={isLoading || code.length !== 6}
-            className="w-full bg-[var(--color-dark)] text-white py-3 rounded-full font-semibold text-lg hover:bg-[#060473] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-white py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: defaultDark }}
           >
             {isLoading ? 'Verifying...' : 'Verify Access'}
           </button>

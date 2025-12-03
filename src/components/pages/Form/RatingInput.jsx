@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function RatingInput({ fun, initialValue = null }) {
+function RatingInput({ fun, initialValue = null, themeMethod = 'solid' }) {
   const [rating, setRating] = useState(initialValue ? Number(initialValue) : null);
 
   useEffect(() => {
@@ -15,10 +15,12 @@ function RatingInput({ fun, initialValue = null }) {
     fun(Number(value))
   };
 
-  // Style for selected state - uses CSS variable that respects theme method (gradient/solid)
+  // Style for selected state - gradient or solid based on themeMethod
   const selectedStyle = {
-    background: 'var(--fill-selected)',
-    color: 'var(--color-dark)',
+    background: themeMethod === 'gradient'
+      ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+      : 'var(--color-dark)',
+    color: 'white',
   };
 
   const unselectedStyle = {

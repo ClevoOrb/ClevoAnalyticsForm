@@ -33,7 +33,7 @@ export const getThemeMethod = () => {
  * ThemeMethodSelector Component
  */
 export default function ThemeMethodSelector({
-  value = "gradient",
+  value = "solid",
   onChange,
   themeColor = "#080594",
   accentColor = "#08b7f6",

@@ -5,7 +5,7 @@
  * theme colors and custom logo. Supports gradient and solid fill methods.
  */
 
-import { useState } from "react";
+// No useState needed - preview is static and non-interactive
 
 // Default logos
 const defaultLogoPC = "/assets/Logo1.svg";
@@ -14,17 +14,16 @@ const defaultLogoMobile = "/assets/LogoMobile.svg";
 export default function FormPreview({
   themeColor = "#080594",  // Dark/primary color
   accentColor = "#08b7f6", // Accent/secondary color
-  themeMethod = "gradient", // "gradient" or "solid"
+  themeMethod = "solid", // "gradient" or "solid" (solid by default)
   logoPC = null,    // Custom logo for PC/Desktop
   logoMobile = null, // Custom logo for Mobile
   formName = "Sample Form"
 }) {
-  // Sample question states
-  const [mcqAnswer, setMcqAnswer] = useState(null);
-  const [checkboxAnswer, setCheckboxAnswer] = useState("");
-  const [ratingAnswer, setRatingAnswer] = useState(null);
-  const [goBackHover, setGoBackHover] = useState(false);
-  const [doneHover, setDoneHover] = useState(false);
+  // Sample question states - prefilled with default answers for preview
+  // These values are static since the preview is non-interactive
+  const mcqAnswer = "Option B";
+  const checkboxAnswer = "Yes";
+  const ratingAnswer = 8;
 
   // Sample MCQ options
   const mcqOptions = ["Option A", "Option B", "Option C", "Option D"];
@@ -34,12 +33,11 @@ export default function FormPreview({
   const progressPercent = (answeredCount / 3) * 100;
 
   // Fill styles based on theme method
+  // Gradient: uses both colors in a gradient
+  // Solid: uses only the dark/primary color (matches RatingInput, YesNoCheckbox, MCQInput, buttons)
   const isGradient = themeMethod === "gradient";
   const fillBg = isGradient
     ? `linear-gradient(135deg, ${themeColor}, ${accentColor})`
-    : accentColor;
-  const fillBgHover = isGradient
-    ? `linear-gradient(135deg, ${accentColor}, ${themeColor})`
     : themeColor;
 
   return (
@@ -116,19 +114,19 @@ export default function FormPreview({
         </div>
       </div>
 
-      {/* Section Header & Progress Bar */}
+      {/* Section Header & Progress Bar - always uses accent color */}
       <div className="px-4 pt-4">
         <div className="text-lg font-bold text-gray-800 arca">Sample Section</div>
         <div className="h-2 bg-white border mt-2 rounded-md overflow-hidden">
           <div
             className="h-full rounded-md transition-all duration-500"
-            style={{ background: fillBg, width: `${progressPercent}%` }}
+            style={{ background: accentColor, width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Sample Questions */}
-      <div className="p-4 space-y-6">
+      {/* Sample Questions - pointer-events-none makes it uninteractive */}
+      <div className="p-4 space-y-6 pointer-events-none">
         {/* Question 1: MCQ with Radio Buttons */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="font-semibold text-[#2C2C2C] mb-3 opensans-semibold text-[0.9rem] leading-[1.4rem]">
@@ -216,36 +214,29 @@ export default function FormPreview({
         </div>
       </div>
 
-      {/* Bottom Buttons */}
-      <div className="px-4 pb-4">
+      {/* Bottom Buttons - pointer-events-none makes them uninteractive */}
+      <div className="px-4 pb-4 pointer-events-none">
         <div className="flex justify-between gap-3">
-          {/* Go Back Button - Fill on hover */}
+          {/* Go Back Button */}
           <button
             type="button"
             className="flex-1 py-2 px-4 rounded-full text-sm font-bold border-2 transition-all opensans-bold"
             style={{
-              background: goBackHover ? fillBg : "white",
+              background: "white",
               borderColor: themeColor,
-              color: goBackHover ? "white" : themeColor,
+              color: themeColor,
             }}
-            onMouseEnter={() => setGoBackHover(true)}
-            onMouseLeave={() => setGoBackHover(false)}
           >
             GO BACK
           </button>
 
-          {/* Done Button - Fill background, hover effect */}
+          {/* Done Button - Always shown as enabled in preview */}
           <button
             type="button"
             className="flex-1 py-2 px-4 rounded-full text-sm font-bold text-white transition-all opensans-bold"
             style={{
-              background: answeredCount === 3
-                ? (doneHover ? fillBgHover : fillBg)
-                : "#8f8fae",
-              opacity: doneHover && answeredCount === 3 ? 0.9 : 1,
+              background: fillBg,
             }}
-            onMouseEnter={() => setDoneHover(true)}
-            onMouseLeave={() => setDoneHover(false)}
           >
             DONE
           </button>

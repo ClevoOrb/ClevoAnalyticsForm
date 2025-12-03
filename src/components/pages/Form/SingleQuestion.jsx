@@ -12,6 +12,7 @@ export default function SingleQuestion({
   mainq = () => {},
   subQ = () => {},
   initialData = null,
+  themeMethod = "solid", // "gradient" or "solid"
 }) {
   const [option, setOption] = useState(initialData ? initialData[0] : "");
   const [suboption, setSuboption] = useState(initialData ? initialData[1] : "");
@@ -80,10 +81,10 @@ export default function SingleQuestion({
       </div>
 
       {question["Type"] === "boolean" ? (
-        <YesNoCheckbox fun={handleOptionChange} index={question["index"]} initialValue={option} />
+        <YesNoCheckbox fun={handleOptionChange} index={question["index"]} initialValue={option} themeMethod={themeMethod} />
       ) : null}
       {question["Type"] === "rating" ? (
-        <RatingInput fun={handleOptionChange} initialValue={option} />
+        <RatingInput fun={handleOptionChange} initialValue={option} themeMethod={themeMethod} />
       ) : null}
       {question["Type"] === "mcq" ? (
         <MCQInput
@@ -91,6 +92,7 @@ export default function SingleQuestion({
           name={`group${index}`}
           options={question["Options"].split(",")}
           initialValue={option}
+          themeMethod={themeMethod}
         />
       ) : null}
 
@@ -105,6 +107,7 @@ export default function SingleQuestion({
               fun={fun}
               index={mutiq["index"]}
               key={mutiq["index"]}
+              themeMethod={themeMethod}
             />
           );
         })
@@ -115,10 +118,10 @@ export default function SingleQuestion({
             question["Sub-Question"].split(",")[1]
           }`}</label>
           {question["subQuestionType"] === "boolean" ? (
-            <YesNoCheckbox fun={handleSubOptionChange} initialValue={suboption} />
+            <YesNoCheckbox fun={handleSubOptionChange} initialValue={suboption} themeMethod={themeMethod} />
           ) : null}
           {question["subQuestionType"] === "rating" ? (
-            <RatingInput fun={handleSubOptionChange} initialValue={suboption} />
+            <RatingInput fun={handleSubOptionChange} initialValue={suboption} themeMethod={themeMethod} />
           ) : null}
           {question["subQuestionType"] === "mcq" ? (
             <MCQInput
@@ -126,6 +129,7 @@ export default function SingleQuestion({
               name={`subgroup${index}`}
               options={question["Suboptions"].split(",")}
               initialValue={suboption}
+              themeMethod={themeMethod}
             />
           ) : null}
         </div>

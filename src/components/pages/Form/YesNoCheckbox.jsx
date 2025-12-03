@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function YesNoCheckbox({ index, fun, initialValue = "" }) {
+function YesNoCheckbox({ index, fun, initialValue = "", themeMethod = 'solid' }) {
   const [yesChecked, setYesChecked] = useState(initialValue === "Yes" ? "yes" : initialValue === "No" ? "no" : "");
 
   useEffect(() => {
@@ -19,10 +19,12 @@ function YesNoCheckbox({ index, fun, initialValue = "" }) {
     }
   };
 
-  // Style for selected state - uses CSS variable that respects theme method (gradient/solid)
+  // Style for selected state - gradient or solid based on themeMethod
   const selectedStyle = {
-    background: 'var(--fill-selected)',
-    color: 'var(--color-dark)',
+    background: themeMethod === 'gradient'
+      ? 'linear-gradient(135deg, var(--color-dark), var(--color-accent))'
+      : 'var(--color-dark)',
+    color: 'white',
     borderColor: 'var(--color-dark)',
     borderWidth: '2px',
   };

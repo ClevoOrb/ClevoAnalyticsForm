@@ -82,7 +82,7 @@ const useAnalyticForms = () => {
         sections: formData.sections,
         theme_color: themeId, // Store theme ID (e.g., "default", "forest", "custom")
         custom_colors: formData.customColors || null, // Store custom colors { dark, accent } for custom themes
-        theme_method: formData.themeMethod || 'gradient', // Store theme method (gradient/solid)
+        theme_method: formData.themeMethod || 'solid', // Store theme method (gradient/solid)
         logo_pc: formData.logoPC || null, // Custom logo for PC/Desktop
         logo_mobile: formData.logoMobile || null // Custom logo for Mobile
       };
@@ -238,19 +238,25 @@ const useAnalyticForms = () => {
   }, []);
 
   /**
-   * Update the theme color of an existing form
+   * Update the theme color and method of an existing form
    * @param {string} formCode - The unique form code
-   * @param {string} themeColor - The new theme color (hex format)
+   * @param {string} themeColor - The new theme color/ID
+   * @param {string} themeMethod - The fill style ("gradient" or "solid")
    * @returns {boolean} - Success status
    */
-  const updateFormColor = useCallback(async (formCode, themeColor) => {
+  const updateFormColor = useCallback(async (formCode, themeColor, themeMethod) => {
     setIsLoading(true);
     setError(null);
 
     try {
+      const updateData = { theme_color: themeColor };
+      if (themeMethod) {
+        updateData.theme_method = themeMethod;
+      }
+
       const { error: updateError } = await supabase
         .from('analytic_forms')
-        .update({ theme_color: themeColor })
+        .update(updateData)
         .eq('form_code', formCode);
 
       if (updateError) {
