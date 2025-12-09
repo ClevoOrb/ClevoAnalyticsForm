@@ -93,9 +93,17 @@ const useAnalyticResponses = (formCode, clevoCode) => {
 
   /**
    * Save section data (answers for a specific section)
+   * IMPORTANT: Only saves to Supabase when isSubmitted = true
+   * This prevents unsubmitted sections with empty answers from appearing in the response
    */
   const saveSectionData = useCallback(async (sectionName, sectionData, isSubmitted = false) => {
     if (!formCode || !clevoCode) return false;
+
+    // Only save to Supabase when the section is being submitted
+    // Auto-save (isSubmitted = false) is handled by localStorage only
+    if (!isSubmitted) {
+      return true; // Return success without saving to Supabase
+    }
 
     try {
       const currentData = await getResponse(true);
@@ -103,7 +111,8 @@ const useAnalyticResponses = (formCode, clevoCode) => {
       const updatedData = currentData ? { ...currentData } : {
         sections: {},
         rewards: { coins: 0, streaks: 0, rules_seen: false },
-        last_filled_section: null
+        last_filled_section: null,
+        form_completed: "no"
       };
 
       if (!updatedData.sections) {
@@ -177,7 +186,8 @@ const useAnalyticResponses = (formCode, clevoCode) => {
         currentData = {
           sections: {},
           rewards: { coins: 0, streaks: 0, rules_seen: false },
-          last_filled_section: null
+          last_filled_section: null,
+          form_completed: "no"
         };
       }
 
@@ -234,7 +244,8 @@ const useAnalyticResponses = (formCode, clevoCode) => {
         currentData = {
           sections: {},
           rewards: { coins: 0, streaks: 0, rules_seen: false },
-          last_filled_section: null
+          last_filled_section: null,
+          form_completed: "no"
         };
       }
 
@@ -263,13 +274,13 @@ const useAnalyticResponses = (formCode, clevoCode) => {
       let currentData = freshData || {
         sections: {},
         rewards: { coins: 0, streaks: 0, rules_seen: false },
-        last_filled_section: null
+        last_filled_section: null,
+        form_completed: "no"
       };
 
       const updatedData = {
         ...currentData,
-        is_form_submitted: true,
-        form_submitted_at: new Date().toISOString()
+        form_completed: "yes"
       };
 
       return await saveResponse(updatedData);
@@ -289,7 +300,7 @@ const useAnalyticResponses = (formCode, clevoCode) => {
         currentData = await getResponse();
       }
 
-      return currentData?.is_form_submitted === true;
+      return currentData?.form_completed === "yes";
     } catch (err) {
       return false;
     }

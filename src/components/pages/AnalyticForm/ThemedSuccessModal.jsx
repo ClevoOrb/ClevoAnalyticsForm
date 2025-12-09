@@ -94,9 +94,9 @@ function ThemedSuccessModal({
     loadRewards();
   }, [modalOpen, formId, maxSections, getRewards, getResponse]);
 
-  const handleContinue = () => {
+  const handleSeeReport = () => {
     fun("no");
-    window.location.href = "https://www.clevohealth.com";
+    navigate(`/report/${formId}`, { replace: true });
   };
 
   const handleFillAnotherForm = () => {
@@ -104,7 +104,7 @@ function ThemedSuccessModal({
     Cookies.remove("analytic_clevo_code");
     Cookies.remove("analytic_form_id");
     fun("no");
-    navigate(`/afl/${formId}`, { replace: true });
+    navigate(`/login/${formId}`, { replace: true });
   };
 
   return (
@@ -223,7 +223,7 @@ function ThemedSuccessModal({
               {/* Buttons Section */}
               <div className="w-full flex flex-col mac:flex-row justify-center items-center mt-8 gap-3">
                 <button
-                  onClick={handleContinue}
+                  onClick={handleSeeReport}
                   onMouseEnter={() => setButtonHover(true)}
                   onMouseLeave={() => setButtonHover(false)}
                   className="px-8 text-[15px] py-3 rounded-full roboto font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full max-w-xs"
@@ -233,7 +233,7 @@ function ThemedSuccessModal({
                     border: `2px solid ${accentColor}`
                   }}
                 >
-                  Continue to Home
+                  See Report
                 </button>
                 <button
                   onClick={handleFillAnotherForm}

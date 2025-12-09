@@ -34,15 +34,29 @@ const THEMES = {
 };
 
 /**
- * Generate a unique form code (6 characters alphanumeric)
+ * Generate a form code from organization name and form name
+ * Format: orgname/formname (URL-safe, lowercase, spaces replaced with underscores)
+ * Example: "Acme Corp" + "Health Survey" = "acme_corp/health_survey"
+ * @param {string} orgName - Organization name
+ * @param {string} formName - Form name
+ * @returns {string} - URL-safe form code
  */
-const generateFormCode = () => {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+const generateFormCode = (orgName, formName) => {
+  // Convert to lowercase, replace spaces with underscores, remove special characters
+  const sanitize = (str) => {
+    return str
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_')           // Replace spaces with underscores
+      .replace(/[^a-z0-9_]/g, '')     // Remove special characters except underscores
+      .replace(/_+/g, '_')            // Replace multiple underscores with single underscore
+      .replace(/^_|_$/g, '');         // Remove leading/trailing underscores
+  };
+
+  const orgPart = sanitize(orgName);
+  const formPart = sanitize(formName);
+
+  return `${orgPart}/${formPart}`;
 };
 
 const useAnalyticForms = () => {
@@ -51,7 +65,7 @@ const useAnalyticForms = () => {
 
   /**
    * Create a new form in Supabase
-   * @param {Object} formData - { name, fileName, questions, sections, themeColor, customColors, logo }
+   * @param {Object} formData - { name, organizationName (for URL slug), fileName, questions, sections, sectionDescriptions, themeColor, customColors, logo }
    * @returns {Object} - Created form with form_code
    */
   const createForm = useCallback(async (formData) => {
@@ -59,9 +73,10 @@ const useAnalyticForms = () => {
     setError(null);
 
     try {
-      const formCode = generateFormCode();
+      // Generate form code (URL slug) from organization name and form name
+      const formCode = generateFormCode(formData.organizationName, formData.name);
       console.log('Creating form with code:', formCode);
-      console.log('Form data:', { name: formData.name, sections: formData.sections, themeColor: formData.themeColor, customColors: formData.customColors });
+      console.log('Form data:', { name: formData.name, sections: formData.sections, themeColor: formData.themeColor });
 
       // Get theme ID (could be "default", "forest", "custom", etc.) or fallback to "default"
       const themeId = formData.themeColor || 'default';
@@ -80,6 +95,7 @@ const useAnalyticForms = () => {
         file_name: formData.fileName,
         questions: formData.questions,
         sections: formData.sections,
+        section_descriptions: formData.sectionDescriptions || {}, // Section descriptions { sectionName: description }
         theme_color: themeId, // Store theme ID (e.g., "default", "forest", "custom")
         custom_colors: formData.customColors || null, // Store custom colors { dark, accent } for custom themes
         theme_method: formData.themeMethod || 'solid', // Store theme method (gradient/solid)
@@ -105,6 +121,13 @@ const useAnalyticForms = () => {
         console.error('Error message:', insertError.message);
         console.error('Error details:', insertError.details);
         console.error('Error hint:', insertError.hint);
+
+        // Check for duplicate key error
+        if (insertError.code === '23505') {
+          const duplicateError = new Error(`A form with this organization and name combination already exists. Please use a different form name.`);
+          duplicateError.isDuplicate = true;
+          throw duplicateError;
+        }
         throw insertError;
       }
 
@@ -305,6 +328,48 @@ const useAnalyticForms = () => {
     }
   }, []);
 
+  /**
+   * Update the questions and sections of an existing form
+   * This is used when re-uploading an Excel file to update the form
+   * @param {string} formCode - The unique form code
+   * @param {Array} questions - The new questions array
+   * @param {Array} sections - The new sections array
+   * @param {Object} sectionDescriptions - The section descriptions { sectionName: description }
+   * @returns {boolean} - Success status
+   */
+  const updateFormQuestions = useCallback(async (formCode, questions, sections, sectionDescriptions = {}) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log('Updating form questions for:', formCode);
+      console.log('New sections:', sections);
+      console.log('Section descriptions:', sectionDescriptions);
+
+      const { error: updateError } = await supabase
+        .from('analytic_forms')
+        .update({
+          questions: questions,
+          sections: sections,
+          section_descriptions: sectionDescriptions
+        })
+        .eq('form_code', formCode);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      console.log('Form questions updated successfully in Supabase:', formCode);
+      return true;
+    } catch (err) {
+      console.error('Error updating form questions:', err);
+      setError(err.message);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     createForm,
     getForm,
@@ -312,6 +377,7 @@ const useAnalyticForms = () => {
     deleteForm,
     updateFormColor,
     updateFormLogo,
+    updateFormQuestions,
     isLoading,
     error
   };

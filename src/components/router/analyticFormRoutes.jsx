@@ -5,7 +5,7 @@
  * These forms are created from uploaded Excel files and stored in Supabase.
  *
  * Protected Routes:
- * - /af and /afu require an access code
+ * - /analytic-forms and /analytic-form-upload require an access code
  * - Access codes are stored in the 'access_code' table in Supabase
  * - Once verified, the access is stored in localStorage
  */
@@ -19,7 +19,7 @@ import AccessCodeGuard from "../common/AccessCodeGuard";
 
 const analyticFormRoutes = [
   {
-    path: "/af",
+    path: "/analytic-forms",
     // Wrapped with AccessCodeGuard - requires access code to view
     element: (
       <AccessCodeGuard>
@@ -28,7 +28,7 @@ const analyticFormRoutes = [
     ),
   },
   {
-    path: "/afu",
+    path: "/analytic-form-upload",
     // Wrapped with AccessCodeGuard - requires access code to view
     element: (
       <AccessCodeGuard>
@@ -38,16 +38,17 @@ const analyticFormRoutes = [
   },
 
   // User routes - for filling forms
+  // URL format: /orgname/formname (e.g., /acme_corp/health_survey)
   {
-    path: "/afl/:formId",
+    path: "/login/:orgName/:formName",
     element: <AnalyticFormLogin />,
   },
   {
-    path: "/analytic-form/:formId",
+    path: "/:orgName/:formName",
     element: <AnalyticFeedbackForm />,
   },
   {
-    path: "/analytic-form/:formId/:index/:id",
+    path: "/:orgName/:formName/:index/:id",
     element: <AnalyticFeedbackFormPost />,
   },
 ];

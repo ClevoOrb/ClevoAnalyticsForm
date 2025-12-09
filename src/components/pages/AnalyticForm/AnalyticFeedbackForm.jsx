@@ -32,7 +32,9 @@ const unlockedIcon = "/assets/unlockBadge.svg";
 const completeBadge = "/assets/starBadge.svg";
 
 export default function AnalyticFeedbackForm() {
-  const { formId } = useParams();
+  const { orgName, formName } = useParams();
+  // Construct formId from URL params: orgName/formName
+  const formId = `${orgName}/${formName}`;
   const [isLoaded, setLoaded] = useState(false);
   const [lastFilled, setLastFilled] = useState(-1);
   const [modalOpen, setModal] = useState(false);
@@ -109,16 +111,16 @@ export default function AnalyticFeedbackForm() {
           setFilledIndexDict(dict);
         } else {
           console.error("Form not found in Supabase");
-          navigate("/afu");
+          navigate("/analytic-form-upload");
         }
       } catch (e) {
         console.error("Error loading form config from Supabase:", e);
-        navigate("/afu");
+        navigate("/analytic-form-upload");
       }
     };
 
     loadFormConfig();
-  }, [formId, navigate, getForm]);
+  }, [orgName, formName, formId, navigate, getForm]);
 
   // Store Supabase response locally for synchronous access in render
   const [supabaseResponseData, setSupabaseResponseData] = useState(null);
@@ -131,8 +133,8 @@ export default function AnalyticFeedbackForm() {
       // Store response data locally for synchronous access
       setSupabaseResponseData(supabaseResponse);
 
-      // Check if form is already submitted (is_form_submitted flag)
-      if (supabaseResponse?.is_form_submitted === true) {
+      // Check if form is already submitted (form_completed flag)
+      if (supabaseResponse?.form_completed === "yes") {
         const sections = formConfig?.sections || [];
         setLastFilled(sections.length);
         setModal(true);
@@ -194,7 +196,7 @@ export default function AnalyticFeedbackForm() {
       };
       checkRulesSeen();
     } else {
-      navigate(`/afl/${formId}`, { replace: true });
+      navigate(`/login/${orgName}/${formName}`, { replace: true });
     }
   }, [filledIndexDict, formConfig, formId, getRewards, updateRewards]);
 
@@ -259,6 +261,13 @@ export default function AnalyticFeedbackForm() {
       if (!cookieClevoCode || !formId) return;
 
       try {
+        // Don't resume streak timer if form is already completed
+        const response = await getResponse();
+        if (response?.form_completed === "yes") {
+          console.log("Form already completed - not resuming streak timer");
+          return;
+        }
+
         const rewards = await getRewards();
         const { streaks = 0, last_updated } = rewards;
 
@@ -352,7 +361,7 @@ export default function AnalyticFeedbackForm() {
     Cookies.remove("analytic_form_id");
 
     setTimeout(() => {
-      navigate(`/afl/${formId}`, { replace: true });
+      navigate(`/login/${orgName}/${formName}`, { replace: true });
     }, 1500);
   };
 
@@ -480,7 +489,7 @@ export default function AnalyticFeedbackForm() {
                 style={{ minHeight: "80px" }}
               >
                 <Link
-                  to={isActive ? `/analytic-form/${formId}/${index}/${sectionName}` : "#"}
+                  to={isActive ? `/${orgName}/${formName}/${index}/${sectionName}` : "#"}
                   onClick={() => {
                     if (isActive) {
                       console.log(`Section ${sectionName} clicked`);

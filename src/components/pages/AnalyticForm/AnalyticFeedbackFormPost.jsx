@@ -37,7 +37,9 @@ const Streaks = "/assets/streak.svg";
 const Badge = "/assets/sectionBadge.svg";
 
 export default function AnalyticFeedbackFormPost() {
-  const { formId, id, index } = useParams();
+  const { orgName, formName, id, index } = useParams();
+  // Construct formId from URL params: orgName/formName
+  const formId = `${orgName}/${formName}`;
   const [questionDone, setQuestionDone] = useState(0);
   const [isLoaded, setLoaded] = useState(true);
   const [modal, setModal] = useState(false);
@@ -95,6 +97,7 @@ export default function AnalyticFeedbackFormPost() {
   const {
     saveSectionData,
     markSectionSubmitted,
+    markFormSubmitted,
     updateRewards: updateSupabaseRewards,
     getResponse: getSupabaseResponse
   } = useAnalyticResponses(formId, clevoCode);
@@ -153,16 +156,16 @@ export default function AnalyticFeedbackFormPost() {
           }
         } else {
           console.error('AnalyticFeedbackFormPost: Form not found');
-          navigate("/afu");
+          navigate("/analytic-form-upload");
         }
       } catch (e) {
         console.error("Error loading form config from Supabase:", e);
-        navigate("/afu");
+        navigate("/analytic-form-upload");
       }
     };
 
     loadFormConfig();
-  }, [formId, id, index, navigate, getForm]);
+  }, [orgName, formName, formId, id, index, navigate, getForm]);
 
   // Streak timer functions
   const startStreakTimer = () => {
@@ -315,10 +318,10 @@ export default function AnalyticFeedbackFormPost() {
       const supabaseResponse = await getSupabaseResponse();
       console.log("AnalyticFeedbackFormPost: Supabase response:", supabaseResponse);
 
-      // Check if form is already submitted (is_form_submitted flag)
-      if (supabaseResponse?.is_form_submitted === true) {
+      // Check if form is already submitted (form_completed flag)
+      if (supabaseResponse?.form_completed === "yes") {
         console.log("Form already submitted - redirecting to main form page");
-        navigate(`/analytic-form/${formId}`, { replace: true });
+        navigate(`/${orgName}/${formName}`, { replace: true });
         return;
       }
 
@@ -342,13 +345,13 @@ export default function AnalyticFeedbackFormPost() {
         // User can only access the next section to fill
         if (parseInt(index) !== nextSectionIndex) {
           console.log("Redirecting - user tried to access wrong section");
-          navigate(`/analytic-form/${formId}`, { replace: true });
+          navigate(`/${orgName}/${formName}`, { replace: true });
         }
       } else {
         // No response - user can only access section 0
         if (parseInt(index) !== 0) {
           console.log("Redirecting - no response and not first section");
-          navigate(`/analytic-form/${formId}`, { replace: true });
+          navigate(`/${orgName}/${formName}`, { replace: true });
         }
       }
     } catch (error) {
@@ -422,7 +425,7 @@ export default function AnalyticFeedbackFormPost() {
 
       const cookieClevoCode = Cookies.get("analytic_clevo_code");
       if (!cookieClevoCode) {
-        navigate(`/afl/${formId}`, { replace: true });
+        navigate(`/login/${orgName}/${formName}`, { replace: true });
         return;
       }
 
@@ -441,6 +444,10 @@ export default function AnalyticFeedbackFormPost() {
           const hasLastUpdated = !!parsed.lastUpdated;
 
           console.log(`Streak restoration check: streaks=${parsed.streaks}, lastUpdated=${parsed.lastUpdated ? new Date(parsed.lastUpdated).toLocaleTimeString() : 'none'}`);
+
+          // IMPORTANT: Clear any existing timers before setting up new ones during restoration
+          // This fixes the 1-minute timer bug where old timers weren't cleared when useEffect re-ran
+          clearStreakTimer();
 
           if (hasStreak && hasLastUpdated) {
             const timeSinceLastUpdate = Date.now() - parsed.lastUpdated;
@@ -1179,8 +1186,32 @@ export default function AnalyticFeedbackFormPost() {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         if (isLastSection) {
+          // Mark the entire form as completed when last section is submitted
+          console.log("Last section submitted - marking form as completed...");
+          await markFormSubmitted();
+          console.log("Form marked as completed");
+
+          // Clear streak timer and warning since form is complete
+          // But DON'T reset the streak count - keep it as their achievement
+          clearStreakTimer();
+
+          // Remove only the lastUpdated from localStorage to stop timer restoration
+          // but keep the streak count as a record
+          const globalRewardsKey = `analytic_rewards_${formId}_${Cookies.get("analytic_clevo_code")}`;
+          const globalData = localStorage.getItem(globalRewardsKey);
+          if (globalData) {
+            try {
+              const parsed = JSON.parse(globalData);
+              delete parsed.lastUpdated; // Remove timer tracking, keep streaks
+              localStorage.setItem(globalRewardsKey, JSON.stringify(parsed));
+              console.log("Streak timer cleared on form completion, streak count preserved");
+            } catch (e) {
+              console.error("Error updating streak data:", e);
+            }
+          }
+
           sessionStorage.removeItem("analyticNavigatedFromSubmission");
-          navigate(`/analytic-form/${formId}`, { replace: true });
+          navigate(`/${orgName}/${formName}`, { replace: true });
         } else {
           // Go straight to the next section
           const nextSectionName = getNextSectionName(index);
@@ -1188,23 +1219,23 @@ export default function AnalyticFeedbackFormPost() {
 
           if (nextSectionName && nextSectionName !== "All Done") {
             sessionStorage.setItem("analyticNavigatedFromSubmission", "true");
-            console.log(`Navigating to next section: /analytic-form/${formId}/${nextIndex}/${nextSectionName}`);
-            navigate(`/analytic-form/${formId}/${nextIndex}/${nextSectionName}`, { replace: true });
+            console.log(`Navigating to next section: /${orgName}/${formName}/${nextIndex}/${nextSectionName}`);
+            navigate(`/${orgName}/${formName}/${nextIndex}/${nextSectionName}`, { replace: true });
           } else if (formConfig?.sections && nextIndex < formConfig.sections.length) {
             // Fallback: use formConfig.sections if jsonData isn't populated
             const fallbackSectionName = formConfig.sections[nextIndex];
             sessionStorage.setItem("analyticNavigatedFromSubmission", "true");
-            console.log(`Navigating to next section (fallback): /analytic-form/${formId}/${nextIndex}/${fallbackSectionName}`);
-            navigate(`/analytic-form/${formId}/${nextIndex}/${fallbackSectionName}`, { replace: true });
+            console.log(`Navigating to next section (fallback): /${orgName}/${formName}/${nextIndex}/${fallbackSectionName}`);
+            navigate(`/${orgName}/${formName}/${nextIndex}/${fallbackSectionName}`, { replace: true });
           } else {
-            navigate(`/analytic-form/${formId}`, { replace: true });
+            navigate(`/${orgName}/${formName}`, { replace: true });
           }
         }
       } catch (error) {
         console.error("Error during section submission:", error);
         setLoaded(true);
         if (isLastSection) {
-          navigate(`/analytic-form/${formId}`, { replace: true });
+          navigate(`/${orgName}/${formName}`, { replace: true });
         }
       }
     }
@@ -1309,7 +1340,7 @@ export default function AnalyticFeedbackFormPost() {
           <div>
             <BackButton
               className="text-[15px] px-8 rounded-full py-4 opensans-bold border-[3px] uppercase transition-all"
-              fallbackPath={`/analytic-form/${formId}`}
+              fallbackPath={`/${orgName}/${formName}`}
               style={{
                 background: goBackHover
                   ? (formConfig?.theme_method === 'gradient'

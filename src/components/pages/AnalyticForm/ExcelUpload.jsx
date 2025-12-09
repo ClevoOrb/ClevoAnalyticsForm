@@ -41,6 +41,8 @@ const parseExcelToJSON = async (file) => {
 
         // Result will be an array of section objects
         const result = [];
+        // Store section descriptions from Excel
+        const sectionDescriptionsFromExcel = {};
 
         // Check if using single-sheet format with Section column
         // by examining the first sheet
@@ -63,13 +65,20 @@ const parseExcelToJSON = async (file) => {
             // Get section name (try both "Section" and "section")
             const sectionName = (row.Section || row.section || "GENERAL").toString().toUpperCase().trim();
 
+            // Get section description (try multiple column name variations)
+            const sectionDesc = row["Section Description"] || row["SectionDescription"] || row["section description"] || row["sectionDescription"] || "";
+
             // Skip rows without questions
             if (!row.Question) return;
 
-            // Track section order
+            // Track section order and capture description from first row of each section
             if (!sectionGroups[sectionName]) {
               sectionGroups[sectionName] = [];
               sectionOrder.push(sectionName);
+              // Store section description if provided
+              if (sectionDesc && sectionDesc.trim()) {
+                sectionDescriptionsFromExcel[sectionName] = sectionDesc.trim();
+              }
             }
 
             // Add question to section with index within that section
@@ -95,6 +104,7 @@ const parseExcelToJSON = async (file) => {
           });
 
           console.log(`Parsed ${sectionOrder.length} sections from single sheet:`, sectionOrder);
+          console.log('Section descriptions from Excel:', sectionDescriptionsFromExcel);
         } else {
           // MULTI-SHEET FORMAT: Each sheet is a section (legacy format)
           console.log("Detected multi-sheet format");
@@ -129,7 +139,8 @@ const parseExcelToJSON = async (file) => {
           });
         }
 
-        resolve(result);
+        // Return both questions and section descriptions
+        resolve({ questions: result, sectionDescriptions: sectionDescriptionsFromExcel });
       } catch (error) {
         reject(error);
       }
@@ -145,6 +156,9 @@ export default function ExcelUpload() {
   const [uploadedData, setUploadedData] = useState(null);
   const [fileName, setFileName] = useState("");
   const [formName, setFormName] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [sectionDescriptions, setSectionDescriptions] = useState({}); // { sectionName: description }
+  const [descriptionsFromExcel, setDescriptionsFromExcel] = useState({}); // Track which descriptions came from Excel
   const [selectedTheme, setSelectedTheme] = useState("default"); // Theme ID or "custom"
   const [customColors, setCustomColors] = useState(null); // { dark: "#hex", accent: "#hex" } for custom themes
   const [selectedThemeMethod, setSelectedThemeMethod] = useState("solid"); // Theme fill method (solid by default)
@@ -215,14 +229,32 @@ export default function ExcelUpload() {
     setCreatedFormId(null); // Reset if uploading new file
 
     try {
-      const jsonData = await parseExcelToJSON(file);
+      const parseResult = await parseExcelToJSON(file);
+
+      // Handle new format that returns { questions, sectionDescriptions }
+      const jsonData = parseResult.questions || parseResult;
+      const descriptionsFromExcel = parseResult.sectionDescriptions || {};
 
       if (!jsonData || jsonData.length === 0) {
         throw new Error("No valid data found in the file");
       }
 
       setUploadedData(jsonData);
-      toast.success(`Successfully parsed ${jsonData.length} section(s) from the file!`, {
+      // Pre-populate section descriptions from Excel if provided
+      setSectionDescriptions(prev => ({
+        ...prev,
+        ...descriptionsFromExcel
+      }));
+      // Track which descriptions came from Excel
+      setDescriptionsFromExcel(descriptionsFromExcel);
+
+      const sectionsWithDesc = Object.keys(descriptionsFromExcel).length;
+      const totalSections = jsonData.length;
+      const descMessage = sectionsWithDesc > 0
+        ? ` (${sectionsWithDesc}/${totalSections} sections have descriptions from Excel)`
+        : '';
+
+      toast.success(`Successfully parsed ${jsonData.length} section(s) from the file!${descMessage}`, {
         duration: 3000,
       });
     } catch (error) {
@@ -275,14 +307,58 @@ export default function ExcelUpload() {
       return;
     }
 
+    if (!organizationName.trim()) {
+      toast.error("Please enter an organization name", {
+        duration: 3000,
+      });
+      // Scroll to and focus on the organization name input
+      const orgNameInput = document.getElementById("organizationName");
+      if (orgNameInput) {
+        orgNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => orgNameInput.focus(), 300); // Focus after scroll animation
+      }
+      return;
+    }
+
+    // Validate section descriptions - skip sections that have descriptions from Excel
+    const sectionNames = uploadedData.map(section => Object.keys(section)[0]);
+
+    // Only validate sections that don't have descriptions from Excel
+    const sectionsNeedingManualInput = sectionNames.filter(name => !descriptionsFromExcel[name]);
+
+    const missingSectionDescriptions = sectionsNeedingManualInput.filter(
+      name => !sectionDescriptions[name] || !sectionDescriptions[name].trim()
+    );
+
+    if (missingSectionDescriptions.length > 0) {
+      toast.error(`Please add description for: ${missingSectionDescriptions[0]}`, {
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Check minimum 20 characters for each description (only for manually entered ones)
+    const shortDescriptions = sectionsNeedingManualInput.filter(
+      name => sectionDescriptions[name] && sectionDescriptions[name].trim().length < 20
+    );
+
+    if (shortDescriptions.length > 0) {
+      toast.error(`Description for "${shortDescriptions[0]}" must be at least 20 characters`, {
+        duration: 3000,
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const formData = {
         name: formName.trim(),
+        organizationName: organizationName.trim(), // Organization name (required)
         fileName: fileName,
         questions: uploadedData,
         sections: uploadedData.map(section => Object.keys(section)[0]),
+        sectionDescriptions: sectionDescriptions, // Section descriptions { sectionName: description }
         themeColor: selectedTheme, // Include selected theme ID or "custom"
         customColors: selectedTheme === "custom" ? customColors : null, // Include custom colors if custom theme
         themeMethod: selectedThemeMethod, // Include theme fill method (gradient/solid)
@@ -295,7 +371,7 @@ export default function ExcelUpload() {
 
       // Generate the form link
       const baseUrl = window.location.origin;
-      const formLink = `${baseUrl}/afl/${savedForm.id}`;
+      const formLink = `${baseUrl}/login/${savedForm.id}`;
 
       setCreatedFormId(savedForm.id);
       setCreatedFormLink(formLink);
@@ -306,9 +382,17 @@ export default function ExcelUpload() {
 
     } catch (error) {
       console.error("Error saving form data:", error);
-      toast.error("Error saving form data. Please try again.", {
-        duration: 4000,
-      });
+
+      // Show specific message for duplicate form error
+      if (error.isDuplicate) {
+        toast.error(error.message, {
+          duration: 5000,
+        });
+      } else {
+        toast.error("Error saving form data. Please try again.", {
+          duration: 4000,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -328,6 +412,9 @@ export default function ExcelUpload() {
     setUploadedData(null);
     setFileName("");
     setFormName("");
+    setOrganizationName(""); // Reset organization name
+    setSectionDescriptions({}); // Reset section descriptions
+    setDescriptionsFromExcel({}); // Reset Excel descriptions tracker
     setSelectedTheme("default"); // Reset to default theme
     setCustomColors(null); // Reset custom colors
     setLogoPC(null); // Reset PC logo
@@ -339,22 +426,172 @@ export default function ExcelUpload() {
     }
   };
 
+  // Handle section description change
+  const handleSectionDescriptionChange = (sectionName, description) => {
+    setSectionDescriptions(prev => ({
+      ...prev,
+      [sectionName]: description
+    }));
+  };
+
+  // Download Excel template function
+  const downloadExcelTemplate = async () => {
+    try {
+      // Dynamically import xlsx library
+      const XLSX = await import('xlsx');
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Template data with headers, instructions, and examples
+      const templateData = [
+        // Headers row
+        ["Section", "Section Description", "Question", "Type", "Options", "subQuestionCondition", "subQuestionType", "Sub-Question", "Suboptions"],
+        // Empty rows for spacing
+        [],
+        [],
+        // Instructions section
+        ["INSTRUCTIONS:"],
+        [],
+        ["NOTE:", "Before uploading, DELETE all instruction rows and example rows below. Keep only the header row (Row 1) and your actual questions."],
+        [],
+        ["Section", "Enter the section name (e.g., LIFESTYLE, DIETARY HABITS). All questions with the same section name will be grouped together."],
+        ["Section Description", "Enter the purpose of this section (min 20 characters). Only needed in the FIRST row of each section."],
+        ["Question", "Enter your question text here."],
+        ["Type", "Choose one: boolean (Yes/No), dropdown (multiple choice), text (free text input), slider, rating"],
+        ["Options", "For dropdown/rating type: Enter comma-separated options (e.g., Option1,Option2,Option3). For boolean: YES,NO"],
+        ["subQuestionCondition", "If you want a follow-up question, enter the answer that triggers it (e.g., YES)"],
+        ["subQuestionType", "Type for the sub-question: dropdown, text, or rating"],
+        ["Sub-Question", "The follow-up question text"],
+        ["Suboptions", "For dropdown sub-questions: comma-separated options"],
+        [],
+        [],
+        // Examples section
+        ["EXAMPLES:"],
+        [],
+        // Lifestyle section examples
+        ["Lifestyle", "This section assesses your daily lifestyle habits including smoking and exercise patterns.", "Do you smoke?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes How often do you smoke?", "Daily,Weekly,Occasionally"],
+        ["Lifestyle", "", "Do you exercise regularly?", "boolean", "YES,NO", "Yes", "rating", "If Yes Rate your exercise intensity", "1,2,3,4,5,6,7,8,9,10"],
+        ["Lifestyle", "", "How many hours do you sleep?", "dropdown", "Less than 5,5-7,7-9,More than 9", "", "", "", ""],
+        // Medical History section examples
+        ["Medical History", "This section collects information about your medical background and current health conditions.", "Do you have any chronic conditions?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes Please specify the condition", "Diabetes,Hypertension,Heart Disease,Other"],
+        ["Medical History", "", "Are you currently on medication?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes What type of medication?", "Prescription,Over-the-counter,Both"],
+        ["Medical History", "", "Do you have allergies?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes Which allergy?", "Dust,Food,Pollen,Other"],
+        // Nutrition section examples
+        ["Nutrition", "This section evaluates your dietary habits and food consumption patterns.", "What is your diet type?", "dropdown", "Vegetarian,Non-Vegetarian,Vegan,Mixed", "", "", "", ""],
+        ["Nutrition", "", "Do you consume sugary foods often?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes How frequently?", "Daily,Weekly,Occasionally"],
+        ["Nutrition", "", "Do you consume caffeine daily?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes How many cups per day?", "1,2,3,4+"],
+        // Mental Health section examples
+        ["Mental Health", "This section assesses your mental well-being and psychological health indicators.", "How would you rate your stress level?", "rating", "1,2,3,4,5,6,7,8,9,10", "", "", "", ""],
+        ["Mental Health", "", "Do you experience frequent headaches?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes Rate the severity", "Mild,Moderate,Severe"],
+        ["Mental Health", "", "Do you feel fatigued often?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes How intense?", "Mild,Moderate,Severe"],
+        // General Wellness section examples
+        ["General Wellness", "This section covers your overall wellness practices and daily health routines.", "How much water do you drink daily?", "dropdown", "1L,1-2L,2-3L,More than 3L", "", "", "", ""],
+        ["General Wellness", "", "Do you walk daily?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes How many steps?", "Below 3000,3000-6000,6000-9000,9000+"],
+        ["General Wellness", "", "Do you check your blood pressure regularly?", "boolean", "YES,NO", "Yes", "dropdown", "If Yes How often?", "Daily,Weekly,Monthly"],
+      ];
+
+      // Create worksheet from data
+      const ws = XLSX.utils.aoa_to_sheet(templateData);
+
+      // Set column widths for better readability
+      ws['!cols'] = [
+        { wch: 18 },  // Section
+        { wch: 60 },  // Section Description
+        { wch: 40 },  // Question
+        { wch: 12 },  // Type
+        { wch: 35 },  // Options
+        { wch: 20 },  // subQuestionCondition
+        { wch: 15 },  // subQuestionType
+        { wch: 35 },  // Sub-Question
+        { wch: 35 },  // Suboptions
+      ];
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Form Template");
+
+      // Generate and download file
+      XLSX.writeFile(wb, "form-template.xlsx");
+
+      toast.success("Template downloaded successfully!", { duration: 2000 });
+    } catch (error) {
+      console.error("Error generating template:", error);
+      toast.error("Failed to download template", { duration: 3000 });
+    }
+  };
+
   // Preview the parsed data
   const renderPreview = () => {
     if (!uploadedData) return null;
 
     return (
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg max-h-[300px] overflow-y-auto">
-        <h3 className="text-lg font-bold text-[#080594] mb-3">Preview</h3>
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg max-h-[500px] overflow-y-auto">
+        <h3 className="text-lg font-bold text-[#080594] mb-3">
+          Sections Preview
+          <span className="text-sm font-normal text-gray-500 ml-2">
+            (Add description for each section)
+          </span>
+        </h3>
         {uploadedData.map((section, sectionIndex) => {
           const sectionName = Object.keys(section)[0];
           const questions = section[sectionName];
+          const isFromExcel = descriptionsFromExcel[sectionName] ? true : false;
 
           return (
-            <div key={sectionIndex} className="mb-4 p-3 bg-white rounded-lg shadow-sm">
+            <div key={sectionIndex} className="mb-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
               <h4 className="font-bold text-[#2C2C2C] mb-2">
                 {sectionName} ({questions.length} questions)
               </h4>
+
+              {/* Section Description - Show differently based on if from Excel or manual */}
+              <div className="mb-3">
+                {isFromExcel ? (
+                  // Description from Excel - Show as read-only with badge
+                  <>
+                    <label className="block text-sm font-semibold text-gray-600 mb-1">
+                      Section Description
+                      <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-normal">
+                        ✓ From Excel
+                      </span>
+                    </label>
+                    <div className="w-full px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-gray-800">
+                      {sectionDescriptions[sectionName]}
+                    </div>
+                  </>
+                ) : (
+                  // Manual input required
+                  <>
+                    <label className="block text-sm font-semibold text-gray-600 mb-1">
+                      Section Description<span className="text-red-500">*</span>
+                      <span className="text-xs font-normal text-gray-400 ml-2">(min. 20 characters)</span>
+                    </label>
+                    <textarea
+                      value={sectionDescriptions[sectionName] || ""}
+                      onChange={(e) => handleSectionDescriptionChange(sectionName, e.target.value)}
+                      placeholder={`What is the purpose of the ${sectionName} section?`}
+                      className={`w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08b7f6] focus:border-transparent transition-all resize-none ${
+                        sectionDescriptions[sectionName] && sectionDescriptions[sectionName].trim().length > 0 && sectionDescriptions[sectionName].trim().length < 20
+                          ? "border-red-300"
+                          : "border-gray-200"
+                      }`}
+                      rows={2}
+                      required
+                    />
+                    <div className="flex justify-end mt-1">
+                      <span className={`text-xs ${
+                        sectionDescriptions[sectionName] && sectionDescriptions[sectionName].trim().length >= 20
+                          ? "text-green-500"
+                          : sectionDescriptions[sectionName] && sectionDescriptions[sectionName].trim().length > 0
+                            ? "text-red-500"
+                            : "text-gray-400"
+                      }`}>
+                        {(sectionDescriptions[sectionName] || "").trim().length}/20
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <ul className="text-sm text-gray-600 space-y-1">
                 {questions.slice(0, 3).map((q, qIndex) => (
                   <li key={qIndex} className="truncate">
@@ -447,7 +684,7 @@ export default function ExcelUpload() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            to={`/afl/${createdFormId}`}
+            to={`/login/${createdFormId}`}
             className="flex-1 bg-[#08b7f6] text-white flex items-center justify-center px-6 py-3 rounded-full font-semibold hover:bg-[#069DE8] transition-colors text-center"
           >
             Open Form
@@ -487,7 +724,7 @@ export default function ExcelUpload() {
               </p>
             </div>
             <Link
-              to="/af"
+              to="/analytic-forms"
               className="bg-gradient-to-r from-[#08b7f6] to-[#080594] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:from-[#080594] hover:to-[#08b7f6] transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -544,6 +781,25 @@ export default function ExcelUpload() {
                     />
                   </div>
 
+                  {/* Organization Name Input */}
+                  <div>
+                    <label
+                      htmlFor="organizationName"
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                    >
+                      Organization Name<span className="text-red-500 text-xl">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="organizationName"
+                      value={organizationName}
+                      onChange={(e) => setOrganizationName(e.target.value)}
+                      placeholder="e.g., ABC Healthcare Pvt Ltd"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08b7f6] focus:border-transparent transition-all"
+                      required
+                    />
+                  </div>
+
                   {/* Theme Selector with Fill Style Toggle */}
                   <ThemeSelector
                     value={selectedTheme}
@@ -582,9 +838,21 @@ export default function ExcelUpload() {
 
                   {/* File Upload Section */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Upload Excel File<span className="text-red-500 text-xl">*</span>
-                    </label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Upload Excel File<span className="text-red-500 text-xl">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={downloadExcelTemplate}
+                        className="flex items-center gap-1 text-sm text-[#08b7f6] hover:text-[#080594] font-medium transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Template (.xlsx)
+                      </button>
+                    </div>
 
                     {/* Hidden file input */}
                     <input
@@ -639,13 +907,13 @@ export default function ExcelUpload() {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={!uploadedData || !formName.trim()}
-                    className={`w-full py-4 font-bold rounded-xl text-base uppercase tracking-wide transition-all duration-300 ${uploadedData && formName.trim()
+                    disabled={!uploadedData || !formName.trim() || !organizationName.trim()}
+                    className={`w-full py-4 font-bold rounded-xl text-base uppercase tracking-wide transition-all duration-300 ${uploadedData && formName.trim() && organizationName.trim()
                         ? "bg-gradient-to-r from-[#080594] to-[#08b7f6] text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}
                   >
-                    {uploadedData && formName.trim() ? (
+                    {uploadedData && formName.trim() && organizationName.trim() ? (
                       <span className="flex items-center justify-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

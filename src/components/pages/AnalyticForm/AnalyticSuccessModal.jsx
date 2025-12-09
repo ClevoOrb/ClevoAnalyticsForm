@@ -86,10 +86,10 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
     loadRewards();
   }, [modalOpen, formId, maxSections, getRewards, getResponse]);
 
-  const handleContinue = () => {
+  const handleSeeReport = () => {
     fun("no"); // Close modal first
-    // Use window.location.href for external URLs (not navigate, which is for internal routes)
-    window.location.href = "https://www.clevohealth.com";
+    // Navigate to the report page
+    navigate(`/report/${formId}`, { replace: true });
   };
 
   const handleFillAnotherForm = () => {
@@ -100,7 +100,7 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
 
     // Close modal and navigate to the same form's login page
     fun("no");
-    navigate(`/afl/${formId}`, { replace: true });
+    navigate(`/login/${formId}`, { replace: true });
   };
 
   return (
@@ -165,10 +165,10 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
               {/* Buttons Section */}
               <div className="w-full flex flex-col mac:flex-row justify-center items-center mt-6 mb-2 gap-3">
                 <button
-                  onClick={handleContinue}
+                  onClick={handleSeeReport}
                   className="px-8 text-[15px] py-3 bg-[var(--color-accent)] hover:bg-[#069DE8] rounded-full text-white roboto font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full max-w-xs"
                 >
-                  Continue to Home
+                  See Report
                 </button>
                 <button
                   onClick={handleFillAnotherForm}

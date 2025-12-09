@@ -28,7 +28,16 @@ export default function AnalyticFormLogin() {
   const [isLoaded, setLoaded] = useState(false);
   const [formConfig, setFormConfig] = useState(null);
   const navigate = useNavigate();
-  const { formId } = useParams();
+  const { orgName, formName } = useParams();
+
+  // Construct formId from URL params: orgName/formName
+  const formId = `${orgName}/${formName}`;
+
+  // Direct Access state
+  const [showDirectAccess, setShowDirectAccess] = useState(false);
+  const [directName, setDirectName] = useState("");
+  const [directMobile, setDirectMobile] = useState("");
+  const [directEmail, setDirectEmail] = useState("");
 
   // Supabase hook for fetching forms
   const { getForm } = useAnalyticForms();
@@ -36,7 +45,7 @@ export default function AnalyticFormLogin() {
   useEffect(() => {
     // Load form configuration from Supabase
     const loadFormConfig = async () => {
-      if (!formId) return;
+      if (!orgName || !formName) return;
 
       try {
         console.log('AnalyticFormLogin: Loading form with code:', formId);
@@ -55,7 +64,7 @@ export default function AnalyticFormLogin() {
           if (Cookies.get("analytic_clevo_id") && Cookies.get("analytic_clevo_code")) {
             const currentFormId = Cookies.get("analytic_form_id");
             if (currentFormId === formId) {
-              navigate(`/analytic-form/${formId}`, { replace: true });
+              navigate(`/${orgName}/${formName}`, { replace: true });
             } else {
               // Different form - clear old cookies and stay on login
               Cookies.remove("analytic_clevo_id");
@@ -69,17 +78,17 @@ export default function AnalyticFormLogin() {
         } else {
           console.error('AnalyticFormLogin: Form not found');
           toast.error("Form not found. Please check the link or upload a new form.");
-          navigate("/afu");
+          navigate("/analytic-form-upload");
         }
       } catch (e) {
         console.error("Error loading form config from Supabase:", e);
         toast.error("Error loading form configuration");
-        navigate("/afu");
+        navigate("/analytic-form-upload");
       }
     };
 
     loadFormConfig();
-  }, [formId, navigate, getForm]);
+  }, [orgName, formName, formId, navigate, getForm]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -99,8 +108,8 @@ export default function AnalyticFormLogin() {
         .eq('clevo_code', clevoCode)
         .single();
 
-      // Check if is_form_submitted flag is true
-      if (existingResponse?.response_data?.is_form_submitted === true) {
+      // Check if form_completed flag is "yes"
+      if (existingResponse?.response_data?.form_completed === "yes") {
         // Form already submitted - show toast and redirect to form page (which will show success modal)
         toast.info("You have already submitted this form!", {
           duration: 4000,
@@ -114,8 +123,8 @@ export default function AnalyticFormLogin() {
         Cookies.set("clevo_code", clevoCode, { expires: 365 });
         Cookies.set("clevo_id", response.data["clevo_id"], { expires: 365 });
 
-        // Redirect to form page which will detect is_form_submitted and show success modal
-        navigate(`/analytic-form/${formId}`, { replace: true });
+        // Redirect to form page which will detect form_completed and show success modal
+        navigate(`/${orgName}/${formName}`, { replace: true });
         return;
       }
 
@@ -136,7 +145,7 @@ export default function AnalyticFormLogin() {
 
       localStorage.setItem(`analytic_last_clevo_code_${formId}`, clevoCode);
 
-      navigate(`/analytic-form/${formId}`, { replace: true });
+      navigate(`/${orgName}/${formName}`, { replace: true });
     } catch (error) {
         if (error.response) {
           const contentType = error.response.headers["content-type"];
@@ -190,6 +199,83 @@ export default function AnalyticFormLogin() {
           });
           setLoaded(true);
         }
+    }
+  };
+
+  /**
+   * Handle Direct Access form submission
+   * Checks if name + mobile combo exists, if so uses existing ID
+   * Otherwise creates new entry with unique direct_access_id
+   */
+  const handleDirectAccessSubmit = async (event) => {
+    event.preventDefault();
+    setLoaded(false);
+
+    try {
+      const trimmedName = directName.trim();
+      const trimmedMobile = directMobile.trim();
+
+      // First, check if this name + mobile number combination already exists
+      // Using ilike for case-insensitive name matching (Sanchi = sanchi = SANCHI)
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from('direct_access')
+        .select('direct_access_id')
+        .ilike('name', trimmedName)
+        .eq('mobile_number', trimmedMobile)
+        .single();
+
+      let directAccessId;
+
+      if (existingRecord && !fetchError) {
+        // Use existing direct_access_id for this name + mobile combo
+        directAccessId = existingRecord.direct_access_id;
+        console.log('Found existing direct access record:', directAccessId);
+      } else {
+        // No existing record - create a new one
+        directAccessId = `DA_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+        const { error: insertError } = await supabase
+          .from('direct_access')
+          .insert({
+            name: trimmedName,
+            mobile_number: trimmedMobile,
+            email: directEmail.trim() || null,
+            direct_access_id: directAccessId,
+            created_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Error saving direct access:', insertError);
+          toast.error("Error processing request. Please try again.", {
+            duration: 4000,
+          });
+          setLoaded(true);
+          return;
+        }
+        console.log('Created new direct access record:', directAccessId);
+      }
+
+      // Set cookies for form access (using direct access ID as clevo_code)
+      Cookies.set("analytic_clevo_code", directAccessId, { expires: 365 });
+      Cookies.set("analytic_clevo_id", directAccessId, { expires: 365 });
+      Cookies.set("analytic_form_id", formId, { expires: 365 });
+      Cookies.set("analytic_direct_access", "true", { expires: 365 });
+
+      // Also set standard cookies for compatibility
+      Cookies.set("clevo_code", directAccessId, { expires: 365 });
+      Cookies.set("clevo_id", directAccessId, { expires: 365 });
+
+      toast.success("Access granted! Redirecting to form...", {
+        duration: 2000,
+      });
+
+      navigate(`/${orgName}/${formName}`, { replace: true });
+    } catch (error) {
+      console.error("Direct access error:", error);
+      toast.error("An error occurred. Please try again.", {
+        duration: 4000,
+      });
+      setLoaded(true);
     }
   };
 
@@ -340,7 +426,152 @@ export default function AnalyticFormLogin() {
                     value="Sign in"
                   ></input>
                 </div>
+
+                {/* OR Divider */}
+                <div className="flex items-center my-6">
+                  <div className="flex-1 border-t border-gray-300"></div>
+                  <span className="px-4 text-gray-500 text-sm font-medium">OR</span>
+                  <div className="flex-1 border-t border-gray-300"></div>
+                </div>
+
+                {/* Direct Access Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowDirectAccess(true)}
+                  className="w-full py-3 font-semibold rounded-full border-2 border-[#08b7f6] text-[#08b7f6] hover:bg-[#08b7f6] hover:text-white transition-colors text-[15px]"
+                >
+                  Direct Access
+                </button>
               </form>
+
+              {/* Direct Access Form Modal */}
+              {showDirectAccess && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-[#080594]">Direct Access</h3>
+                      <button
+                        onClick={() => {
+                          setShowDirectAccess(false);
+                          setDirectName("");
+                          setDirectMobile("");
+                          setDirectEmail("");
+                        }}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <p className="text-gray-600 text-sm mb-6">
+                      Enter your details to access the form directly.
+                    </p>
+
+                    <form onSubmit={handleDirectAccessSubmit}>
+                      {/* Name Field (Required) */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={directName}
+                          onChange={(e) => setDirectName(e.target.value)}
+                          placeholder="Enter your full name"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#08b7f6] focus:border-transparent transition-all"
+                          required
+                        />
+                      </div>
+
+                      {/* Mobile Number Field (Required) */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          Mobile Number <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 py-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-xl text-gray-600 text-sm">
+                            +91
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={directMobile}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                              setDirectMobile(value);
+                            }}
+                            onKeyDown={(e) => {
+                              const isControlCommand =
+                                (e.ctrlKey || e.metaKey) &&
+                                ["c", "v", "x", "a"].includes(e.key.toLowerCase());
+                              if (
+                                !/[0-9]/.test(e.key) &&
+                                e.key !== "Backspace" &&
+                                e.key !== "Tab" &&
+                                e.key !== "Enter" &&
+                                e.key !== "Delete" &&
+                                e.key !== "ArrowLeft" &&
+                                e.key !== "ArrowRight" &&
+                                !isControlCommand
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            placeholder="10-digit mobile number"
+                            pattern="[0-9]{10}"
+                            maxLength={10}
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-[#08b7f6] focus:border-transparent transition-all"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email Field (Optional) */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          Email <span className="text-gray-400 font-normal">(Optional)</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={directEmail}
+                          onChange={(e) => setDirectEmail(e.target.value)}
+                          placeholder="Enter your email address"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#08b7f6] focus:border-transparent transition-all"
+                        />
+                      </div>
+
+                      {/* Submit Buttons */}
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowDirectAccess(false);
+                            setDirectName("");
+                            setDirectMobile("");
+                            setDirectEmail("");
+                          }}
+                          className="flex-1 py-3 font-semibold rounded-full border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={!directName.trim() || directMobile.length !== 10}
+                          className={`flex-1 py-3 font-semibold rounded-full transition-colors ${
+                            directName.trim() && directMobile.length === 10
+                              ? "bg-[#08b7f6] text-white hover:bg-[#069DE8]"
+                              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          Access Form
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="hidden mac:flex">
               <img className="" src={AuthImg} alt="" loading="lazy" />

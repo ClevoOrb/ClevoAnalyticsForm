@@ -5,7 +5,7 @@
  * require access code verification before they can be viewed.
  *
  * How it works:
- * 1. When user tries to access a protected page (like /af)
+ * 1. When user tries to access a protected page (like /analytic-forms)
  * 2. This component checks if they're already verified (via localStorage)
  * 3. If NOT verified: Shows an access code entry form
  * 4. If verified: Shows the actual page content (children)

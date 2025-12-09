@@ -84,9 +84,14 @@ export default function SingleQuestion({
         <YesNoCheckbox fun={handleOptionChange} index={question["index"]} initialValue={option} themeMethod={themeMethod} />
       ) : null}
       {question["Type"] === "rating" ? (
-        <RatingInput fun={handleOptionChange} initialValue={option} themeMethod={themeMethod} />
+        <RatingInput
+          fun={handleOptionChange}
+          initialValue={option}
+          themeMethod={themeMethod}
+          options={question["Options"] ? question["Options"].split(",") : null}
+        />
       ) : null}
-      {question["Type"] === "mcq" ? (
+      {(question["Type"] === "mcq" || question["Type"] === "dropdown") ? (
         <MCQInput
           fun={handleOptionChange}
           name={`group${index}`}
@@ -121,9 +126,14 @@ export default function SingleQuestion({
             <YesNoCheckbox fun={handleSubOptionChange} initialValue={suboption} themeMethod={themeMethod} />
           ) : null}
           {question["subQuestionType"] === "rating" ? (
-            <RatingInput fun={handleSubOptionChange} initialValue={suboption} themeMethod={themeMethod} />
+            <RatingInput
+              fun={handleSubOptionChange}
+              initialValue={suboption}
+              themeMethod={themeMethod}
+              options={question["Suboptions"] ? question["Suboptions"].split(",") : null}
+            />
           ) : null}
-          {question["subQuestionType"] === "mcq" ? (
+          {(question["subQuestionType"] === "mcq" || question["subQuestionType"] === "dropdown") ? (
             <MCQInput
               fun={handleSubOptionChange}
               name={`subgroup${index}`}

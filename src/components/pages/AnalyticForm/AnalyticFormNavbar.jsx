@@ -102,7 +102,7 @@ const AnalyticFormNavbar = ({
 
   // Navigate to form home page
   const handleLogoClick = () => {
-    navigate(`/analytic-form/${formId}`);
+    navigate(`/${formId}`);
   };
 
   // Load overall rewards from localStorage
@@ -292,8 +292,10 @@ const AnalyticFormNavbar = ({
                   </div>
                 )}
               </button>
-              <div className="text-[1rem] leading-[1.5rem] tab:text-[1.3rem] tab:leading-[2.1rem] mac:text-[1.2rem] mac:leading-[1.7rem] md:leading-[1.7rem] md:text-[1.1rem] xxl:text-[1.3rem] text-white arca">
-                {formName.toUpperCase()}
+              <div className="flex flex-col items-center">
+                <div className="text-[1rem] leading-[1.5rem] tab:text-[1.3rem] tab:leading-[2.1rem] mac:text-[1.2rem] mac:leading-[1.7rem] md:leading-[1.7rem] md:text-[1.1rem] xxl:text-[1.3rem] text-white arca">
+                  {formName.toUpperCase()}
+                </div>
               </div>
             </div>
           </div>
@@ -327,8 +329,10 @@ const AnalyticFormNavbar = ({
                   </div>
                 )}
               </button>
-              <div className="absolute left-1/2 transform -translate-x-1/2 text-[0.9rem] leading-[1.2rem] text-white arca tab:text-[1.1rem] tab:leading-[1.5rem]">
-                {formName.toUpperCase()}
+              <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+                <div className="text-[0.9rem] leading-[1.2rem] text-white arca tab:text-[1.1rem] tab:leading-[1.5rem]">
+                  {formName.toUpperCase()}
+                </div>
               </div>
             </div>
 
