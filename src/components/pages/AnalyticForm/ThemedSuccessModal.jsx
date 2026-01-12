@@ -96,7 +96,9 @@ function ThemedSuccessModal({
 
   const handleSeeReport = () => {
     fun("no");
-    navigate(`/report/${formId}`, { replace: true });
+    // Navigate to the report page with clevoCode
+    const cookieClevoCode = Cookies.get("analytic_clevo_code");
+    navigate(`/report/${formId}/${cookieClevoCode}`, { replace: true });
   };
 
   const handleFillAnotherForm = () => {

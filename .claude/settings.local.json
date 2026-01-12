@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(copy \"C:/Desktop/Orbuculum_FE/src/components/pages/AnalyticForm/AnalyticFeedbackForm.jsx\" \"C:/Desktop/ClevoAnalyticsForm/src/components/pages/AnalyticForm/\")",
-      "Bash(dir /s /b)"
+      "Bash(dir /s /b)",
+      "Bash(node -e:*)",
+      "Bash(dir /s /b C:Desktop*report*)"
     ],
     "deny": [],
     "ask": []

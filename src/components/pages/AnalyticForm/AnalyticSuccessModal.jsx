@@ -88,8 +88,9 @@ function AnalyticSuccessModal({ modalOpen, fun, formId, maxSections = 13 }) {
 
   const handleSeeReport = () => {
     fun("no"); // Close modal first
-    // Navigate to the report page
-    navigate(`/report/${formId}`, { replace: true });
+    // Navigate to the report page with clevoCode
+    const cookieClevoCode = Cookies.get("analytic_clevo_code");
+    navigate(`/report/${formId}/${cookieClevoCode}`, { replace: true });
   };
 
   const handleFillAnotherForm = () => {

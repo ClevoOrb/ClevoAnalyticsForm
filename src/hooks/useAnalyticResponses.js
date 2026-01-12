@@ -307,6 +307,49 @@ const useAnalyticResponses = (formCode, clevoCode) => {
   }, [getResponse]);
 
   /**
+   * Get agent response data (LLM analysis results) for this form submission
+   */
+  const getAgentResponse = useCallback(async () => {
+    if (!formCode || !clevoCode) return null;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('analytic_responses')
+        .select('agent_response')
+        .eq('form_code', formCode)
+        .eq('clevo_code', clevoCode)
+        .single();
+
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
+          return null; // No record found
+        }
+        throw fetchError;
+      }
+
+      // Parse the agent_response if it's a string
+      const agentResponse = data?.agent_response;
+      if (typeof agentResponse === 'string') {
+        try {
+          return JSON.parse(agentResponse);
+        } catch {
+          return agentResponse;
+        }
+      }
+      return agentResponse;
+    } catch (err) {
+      console.error('Error fetching agent response:', err);
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [formCode, clevoCode]);
+
+  /**
    * Get overall progress for all sections
    */
   const getOverallProgress = useCallback(async (allSections) => {
@@ -345,6 +388,7 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     getRewards,
     updateRewards,
     getOverallProgress,
+    getAgentResponse,
     responseData,
     isLoading,
     error

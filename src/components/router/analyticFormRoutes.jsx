@@ -15,6 +15,7 @@ import AnalyticFeedbackForm from "../pages/AnalyticForm/AnalyticFeedbackForm";
 import AnalyticFeedbackFormPost from "../pages/AnalyticForm/AnalyticFeedbackFormPost";
 import AnalyticFormsList from "../pages/AnalyticForm/AnalyticFormsList";
 import ExcelUpload from "../pages/AnalyticForm/ExcelUpload";
+import AnalyticsReport from "../pages/AnalyticForm/AnalyticsReport";
 import AccessCodeGuard from "../common/AccessCodeGuard";
 
 const analyticFormRoutes = [
@@ -50,6 +51,12 @@ const analyticFormRoutes = [
   {
     path: "/:orgName/:formName/:index/:id",
     element: <AnalyticFeedbackFormPost />,
+  },
+  // Report route - displays health assessment report
+  // URL format: /report/orgname/formname/clevoCode
+  {
+    path: "/report/:orgName/:formName/:clevoCode",
+    element: <AnalyticsReport />,
   },
 ];
 

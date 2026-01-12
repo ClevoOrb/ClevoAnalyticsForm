@@ -61,6 +61,8 @@ module.exports = {
         roboto: ["Roboto", "sans-serif"],
         poppins: ["Poppins", "sans"],
         quick: ["Quicksand", "sans"],
+        inter: ["Inter", "sans-serif"],
+        manrope: ["Manrope", "sans-serif"],
       },
       screens: {
         small:"300px",
