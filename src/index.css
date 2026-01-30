@@ -180,6 +180,18 @@
   font-family: "Roboto", sans-serif;
 }
 
+.font-alata {
+  font-family: "Alata", sans-serif;
+}
+
+.font-instrument {
+  font-family: "Instrument Sans", sans-serif;
+}
+
+.font-montserrat {
+  font-family: "Montserrat", sans-serif;
+}
+
 /* Headings use ArcaMajora3-Bold */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'ArcaMajora3-Bold', sans-serif;

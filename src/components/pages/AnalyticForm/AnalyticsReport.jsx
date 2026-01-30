@@ -69,6 +69,70 @@ const COLORS = {
 };
 
 // ============================================
+// REPORT THEMES - Color variations for slides
+// ============================================
+const REPORT_THEMES = {
+  teal: {
+    name: 'Teal',
+    coverGradient: ['#2b00ff', '#000000'],
+    primary: '#3cc2d8',
+    primaryDark: '#22626d',
+    secondary: '#7affe6',
+    secondaryMid: '#3a8b7e',
+    accent: '#a5f7ff',
+    darkBg: '#0a0f0f',
+    baseDark: '#131416',
+  },
+  blue: {
+    name: 'Blue',
+    coverGradient: ['#3b82f6', '#000000'],
+    primary: '#3b82f6',
+    primaryDark: '#1e40af',
+    secondary: '#93c5fd',
+    secondaryMid: '#2563eb',
+    accent: '#bfdbfe',
+    darkBg: '#0a0f1a',
+    baseDark: '#131620',
+  },
+  purple: {
+    name: 'Purple',
+    coverGradient: ['#8b5cf6', '#000000'],
+    primary: '#8b5cf6',
+    primaryDark: '#5b21b6',
+    secondary: '#c4b5fd',
+    secondaryMid: '#7c3aed',
+    accent: '#ddd6fe',
+    darkBg: '#0f0a1a',
+    baseDark: '#1a1625',
+  },
+  green: {
+    name: 'Green',
+    coverGradient: ['#10b981', '#000000'],
+    primary: '#10b981',
+    primaryDark: '#047857',
+    secondary: '#6ee7b7',
+    secondaryMid: '#059669',
+    accent: '#a7f3d0',
+    darkBg: '#0a0f0d',
+    baseDark: '#131816',
+  },
+  orange: {
+    name: 'Orange',
+    coverGradient: ['#f97316', '#000000'],
+    primary: '#f97316',
+    primaryDark: '#c2410c',
+    secondary: '#fdba74',
+    secondaryMid: '#ea580c',
+    accent: '#fed7aa',
+    darkBg: '#0f0d0a',
+    baseDark: '#1a1613',
+  },
+};
+
+// Default theme
+const DEFAULT_THEME = REPORT_THEMES.teal;
+
+// ============================================
 // UTILITY
 // ============================================
 const getScoreColor = (score) => {
@@ -119,7 +183,7 @@ const AnimatedNumber = ({ value, decimals = 1, duration = 1500, active = true })
 // ============================================
 // DOUGHNUT CHART
 // ============================================
-const DoughnutChart = ({ score, size = 200, active = true, darkMode = false }) => {
+const DoughnutChart = ({ score, size = 200, active = true, darkMode = false, theme = DEFAULT_THEME }) => {
   const [isAnimated, setIsAnimated] = useState(false);
 
   useEffect(() => {
@@ -132,7 +196,7 @@ const DoughnutChart = ({ score, size = 200, active = true, darkMode = false }) =
   }, [active]);
 
   const percentage = (score / 10) * 100;
-  const strokeWidth = darkMode ? 68 : 16; // Thicker ring for dark mode
+  const strokeWidth = 68; // Same ring thickness for both modes
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const scoreLength = (percentage / 100) * circumference;
@@ -146,18 +210,18 @@ const DoughnutChart = ({ score, size = 200, active = true, darkMode = false }) =
         {/* Gradient definition for progress */}
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#3cc2d8" />
-            <stop offset="50%" stopColor="#22626d" />
-            <stop offset="100%" stopColor="#3cc2d8" />
+            <stop offset="0%" stopColor={darkMode ? theme.primary : '#2b00ff'} />
+            <stop offset="50%" stopColor={darkMode ? theme.primaryDark : '#6366f1'} />
+            <stop offset="100%" stopColor={darkMode ? theme.primary : '#2b00ff'} />
           </linearGradient>
         </defs>
-        {/* Background ring - Black */}
+        {/* Background ring */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={darkMode ? "#0a0a0a" : "#E5E7EB"}
+          stroke={darkMode ? theme.darkBg : "rgba(43,0,255,0.1)"}
           strokeWidth={strokeWidth}
         />
         {/* Progress ring - Gradient */}
@@ -220,14 +284,36 @@ const ProgressBar = ({ value, max = 10, label = '', active = true }) => {
 // ============================================
 
 // Header bar for all slides
-const SlideHeader = () => (
+const SlideHeader = ({ isDarkMode }) => (
   <div className="absolute top-0 left-0 right-0 px-6 md:px-12 py-6 flex justify-between items-center z-10">
     <div className="flex items-center gap-2">
       <img src="/assets/Logo1.svg" alt="Orbuculum" className="h-8 w-auto object-contain" />
     </div>
-    <span className="text-sm text-[#fdfcfc] hidden sm:block">Analysis Report</span>
-    <span className="text-sm font-semibold text-[#1A1A1A]">Innovative & Collaborative</span>
+    <span className={`text-sm hidden sm:block ${isDarkMode ? 'text-[#fdfcfc]' : 'text-[#1A1A1A]'}`}>Analysis Report</span>
   </div>
+);
+
+// Theme toggle button component
+const ThemeToggle = ({ isDarkMode, onToggle }) => (
+  <button
+    onClick={onToggle}
+    className={`fixed top-6 right-16 sm:right-20 z-50 p-2.5 rounded-full backdrop-blur transition-all hover:scale-110 ${
+      isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'
+    }`}
+    aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+  >
+    {isDarkMode ? (
+      // Sun icon - shown in dark mode, click to go light
+      <svg className="w-5 h-5 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+      </svg>
+    ) : (
+      // Moon icon - shown in light mode, click to go dark
+      <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+        <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
+      </svg>
+    )}
+  </button>
 );
 
 // 4-pointed star SVG
@@ -285,7 +371,7 @@ const SquiggleDecor = ({ position = "right", className = "" }) => (
 // ============================================
 // SLIDE WRAPPER - Full screen slide with white bg
 // ============================================
-const Slide = ({ children, active, noPadding = false, slideKey, direction = 1 }) => (
+const Slide = ({ children, active, noPadding = false, slideKey, direction = 1, isDarkMode = true }) => (
   <motion.div
     key={slideKey}
     custom={direction}
@@ -303,7 +389,7 @@ const Slide = ({ children, active, noPadding = false, slideKey, direction = 1 })
       ${!active ? 'pointer-events-none' : ''}
     `}
   >
-    <SlideHeader />
+    <SlideHeader isDarkMode={isDarkMode} />
     <motion.div
       className="w-full h-full"
       variants={containerVariants}
@@ -320,10 +406,11 @@ const Slide = ({ children, active, noPadding = false, slideKey, direction = 1 })
 // ============================================
 
 // Slide 0: Cover Page (Annual Report Style)
-const CoverSlide = () => (
+// Note: Cover slide keeps gradient background in both modes (branded element)
+const CoverSlide = ({ theme, isDarkMode }) => (
   <div
     className="relative w-full h-full min-h-[100vh] overflow-hidden flex flex-col"
-    style={{ background: 'linear-gradient(to top, #2b00ff 0%, #000000 100%)' }}
+    style={{ background: `linear-gradient(to top, ${theme.coverGradient[0]} 0%, ${theme.coverGradient[1]} 100%)` }}
   >
 
     <div className='w-full h-full flex flex-col items-center justify-center relative z-10'>
@@ -344,42 +431,44 @@ const CoverSlide = () => (
 );
 
 // Slide 1: Content Index (like Image 1)
-const ContentIndexSlide = ({ sections }) => (
+const ContentIndexSlide = ({ sections, theme, isDarkMode }) => (
   <div
-    className="relative h-full overflow-hidden "
-    style={{ background: 'linear-gradient(135deg, #3cc2d8, #22626d, #131416, #131416)' }}
+    className="relative h-full overflow-hidden"
+    style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}
   >
-    {/* Circle - kept as is */}
+    {/* Circle - different colors for dark/light modes */}
     <div
       className="h-[110%] aspect-square rounded-full absolute top-4"
-      style={{ background: 'linear-gradient(135deg, #3cc2d8, #22626d, #131416, #131416)' }}
+      style={{ background: isDarkMode
+        ? `linear-gradient(135deg, ${theme.primary}, ${theme.primaryDark}, ${theme.baseDark}, ${theme.baseDark})`
+        : 'linear-gradient(135deg, #2a00f9, #6366f1, #e0e7ff, #e0e7ff)'
+      }}
     />
 
     {/* Content - positioned like the image */}
     <div className="absolute inset-0 flex items-center">
-      <div className="flex items-start ml-[15%] md:ml-[20%]">
-        {/* Left - Number */}
-        <div className="text-white leading-none -mt-[0.1em] font-inter font-bold text-[7rem] md:text-[10rem] mr-6 md:mr-10">
-          01
-        </div>
-
-        {/* Right - Text content */}
-        <div className="max-w-xl">
-          <h1 className="text-white font-inter font-bold text-3xl md:text-5xl leading-tight">
-            {sections?.[0]?.section_name || 'Health'}
-          </h1>
-          <h2 className="text-white font-manrope font-medium text-2xl md:text-4xl mt-1">
-            Assessment
-          </h2>
-
-          <p className="text-white/80 font-manrope text-sm md:text-base leading-relaxed mt-6">
-            This comprehensive report analyzes your responses across {sections?.length || 0} key
-            health dimensions. Each section provides detailed insights into different aspects
-            of your wellbeing, helping you understand your current health status and identify
-            areas for improvement. The assessment covers{' '}
-            {sections?.slice(0, 3).map(s => s.section_name).join(', ') || 'various health metrics'}
-            {sections?.length > 3 ? ` and ${sections.length - 3} more sections` : ''}.
-          </p>
+      <div className="flex flex-col items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
+        {/* Number + Title + Paragraph row */}
+        <div className="flex items-start">
+          <div className={`leading-none -mt-[0.1em] font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+            01
+          </div>
+          <div className="max-w-xl">
+            <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              {sections?.[0]?.section_name || 'Health'}
+            </h1>
+            <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Assessment
+            </h2>
+            <p className={` font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-6 ${isDarkMode ? 'text-white/80' : 'text-[#1A1A1A]/80'}`}>
+              This comprehensive report analyzes your responses across {sections?.length || 0} key
+              health dimensions. Each section provides detailed insights into different aspects
+              of your wellbeing, helping you understand your current health status and identify
+              areas for improvement. The assessment covers{' '}
+              {sections?.slice(0, 3).map(s => s.section_name).join(', ') || 'various health metrics'}
+              {sections?.length > 3 ? ` and ${sections.length - 3} more sections` : ''}.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -387,71 +476,64 @@ const ContentIndexSlide = ({ sections }) => (
 );
 
 // Slide 2: Hero Score (matching ContentIndexSlide structure)
-const HeroSlide = ({ score, formName, active }) => (
+const HeroSlide = ({ score, formName, active, theme, isDarkMode }) => (
   <div
     className="relative h-full overflow-hidden"
-    style={{ background: 'linear-gradient(135deg, #3cc2d8, #22626d, #131416, #131416)' }}
+    style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}
   >
-
 
     {/* Content - positioned like ContentIndexSlide */}
     <div className="absolute inset-0 flex items-center">
-      <div className="flex flex-col sm:flex-row items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
-        {/* Left - Number */}
-        <div className="text-white -mt-[0.1em] font-inter font-bold text-[5rem] sm:text-[7rem] md:text-[10rem] leading-none mr-4 sm:mr-6 md:mr-10">
-          02
-        </div>
-
-        {/* Right - Text content */}
-        <div className="max-w-md lg:max-w-xl">
-          <h1 className="text-white font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight">
-            Health
-          </h1>
-          <h2 className="text-white font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1">
-            Assessment
-          </h2>
-
-          <p className="text-white/80 font-manrope text-xs sm:text-sm md:text-base leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md">
-            Your comprehensive health assessment results. This report analyzes your responses
-            across multiple health dimensions to provide actionable insights for your wellbeing.
-          </p>
-
-          {/* Score badge and status - responsive */}
-          <div className="flex flex-wrap items-center gap-3 mt-4 sm:mt-6">
-            <div
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full"
-              style={{ backgroundColor: 'rgba(60, 194, 216, 0.2)' }}
-            >
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3cc2d8' }} />
-              <span className="font-medium text-sm sm:text-base" style={{ color: '#3cc2d8' }}>{getScoreLabel(score)}</span>
-            </div>
-            <div className="text-white/60 text-sm sm:text-base font-medium">
-              Score: <span className="text-white font-bold">{score.toFixed(1)}</span>/10
-            </div>
+      <div className="flex flex-col items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
+        {/* Number + Title + Content row */}
+        <div className="flex items-start">
+          <div className={`-mt-[0.1em] font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] leading-none mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+            02
           </div>
+          <div className="max-w-md lg:max-w-xl">
+            <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Health
+            </h1>
+            <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Assessment
+            </h2>
+            <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md ${isDarkMode ? 'text-white/80' : 'text-[#1A1A1A]/80'}`}>
+              Your comprehensive health assessment results. This report analyzes your responses
+              across multiple health dimensions to provide actionable insights for your wellbeing.
+            </p>
 
-          {/* Form name */}
-          <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/20">
-            <p className="text-white font-semibold text-sm sm:text-base">{formName}</p>
-            <p className="text-white/50 text-xs sm:text-sm">Health Assessment Form</p>
+            {/* Score badge and status - responsive */}
+            <div className="flex flex-wrap items-center gap-3 mt-4 sm:mt-6">
+              <div
+                className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full"
+                style={{ backgroundColor: isDarkMode ? `${theme.primary}33` : 'rgba(59, 130, 246, 0.2)' }}
+              >
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDarkMode ? theme.primary : '#3b82f6' }} />
+                <span className="font-medium text-sm sm:text-base" style={{ color: isDarkMode ? theme.primary : '#3b82f6' }}>{getScoreLabel(score)}</span>
+              </div>
+              <div className={`text-sm sm:text-base font-medium ${isDarkMode ? 'text-white/60' : 'text-[#1A1A1A]/60'}`}>
+                Score: <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{score.toFixed(1)}</span>/10
+              </div>
+            </div>
+
+            {/* Form name */}
+            <div className={`mt-4 sm:mt-6 pt-4 sm:pt-6 border-t ${isDarkMode ? 'border-white/20' : 'border-[#1A1A1A]/20'}`}>
+              <p className={`font-semibold text-sm sm:text-base font-montserrat ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{formName}</p>
+              <p className={`text-sm sm:text-base font-montserrat ${isDarkMode ? 'text-white/50' : 'text-[#1A1A1A]/50'}`}>Health Assessment Form</p>
+            </div>
           </div>
         </div>
       </div>
       {/* Score Ring - positioned on right side */}
       <div className="hidden md:flex items-center px-6 justify-center">
-        <DoughnutChart score={score} size={300} active={active} darkMode={true} />
+        <DoughnutChart score={score} size={300} active={active} darkMode={isDarkMode} theme={theme} />
       </div>
-    </div>
-
-    {/* Mobile: Score ring at bottom */}
-    <div className="md:hidden absolute bottom-8 right-4 opacity-30">
-      <DoughnutChart score={score} size={150} active={active} darkMode={true} />
     </div>
   </div>
 );
 
 // Slide 3: Stats (with overlapping circles background)
-const StatsSlide = ({ stats, sectionsRated, totalSections, active }) => {
+const StatsSlide = ({ stats, sectionsRated, totalSections, active, theme, isDarkMode }) => {
   const items = [
     { value: stats?.rated_questions || 0, label: 'Questions Analyzed' },
     { value: sectionsRated || 0, label: 'Sections Completed' },
@@ -460,76 +542,83 @@ const StatsSlide = ({ stats, sectionsRated, totalSections, active }) => {
   const coverage = stats?.rating_coverage || '100%';
 
   return (
-    <div className="relative h-full overflow-hidden" style={{ backgroundColor: '#0a0f0f' }}>
+    <div className="relative h-full overflow-hidden" style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}>
       {/* Outer circle - larger, behind */}
       <div
         className="absolute rounded-full pointer-events-none h-[150%] aspect-square right-[-10%] top-[60%] transform -translate-y-1/2"
-        style={{ background: 'linear-gradient(135deg, #3cc2d8, #22626d, #131416, #131416)' }}
+        style={{ background: isDarkMode
+          ? `linear-gradient(135deg, ${theme.primary}, ${theme.primaryDark}, ${theme.baseDark}, ${theme.baseDark})`
+          : 'linear-gradient(135deg, #e0e7ff, #93a0fa, #2b00ff, #6366f1)'
+        }}
       >
         {/* Inner circle - concentric (centered within outer) */}
         <div
           className="absolute rounded-full pointer-events-none h-[70%] aspect-square left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
-          style={{ background: 'linear-gradient(135deg, #7affe6, #3a8b7e, #131416, #131416)' }}
+          style={{ background: isDarkMode
+            ? `linear-gradient(135deg, ${theme.secondary}, ${theme.secondaryMid}, ${theme.baseDark}, ${theme.baseDark})`
+            : 'linear-gradient(135deg, #818cf8, #a5b4fc, #e0e7ff, #e0e7ff)'
+          }}
         />
       </div>
 
 
       {/* Content */}
       <div className="absolute inset-0 flex items-center">
-        <div className="flex flex-col sm:flex-row items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
-          {/* Left - Number */}
-          <div className="text-white font-inter font-bold text-[5rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10">
-            03
-          </div>
+        <div className="flex flex-col items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
+          {/* Number + Title + Content row */}
+          <div className="flex items-start">
+            <div className={`font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              03
+            </div>
+            <div className="max-w-md lg:max-w-xl">
+              <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                Assessment
+              </h1>
+              <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                Overview
+              </h2>
+              <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md ${isDarkMode ? 'text-white/70' : 'text-[#1A1A1A]/70'}`}>
+                Summary of your health assessment metrics, showing the scope and coverage of your evaluation across all sections.
+              </p>
 
-          {/* Right - Text content */}
-          <div className="max-w-md lg:max-w-xl">
-            <h1 className="text-white font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight">
-              Assessment
-            </h1>
-            <h2 className="text-white font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1">
-              Overview
-            </h2>
-
-            <p className="text-white/70 font-manrope text-xs sm:text-sm md:text-base leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md">
-              Summary of your health assessment metrics, showing the scope and coverage of your evaluation across all sections.
-            </p>
-
-            {/* Stats row */}
-            <div className="flex flex-wrap gap-4 sm:gap-6 mt-6 sm:mt-8">
-              {items.map((item, idx) => (
-                <div key={idx} className="flex flex-col">
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                    {typeof item.value === 'number' ? (
-                      <AnimatedNumber value={item.value} decimals={0} active={active} />
-                    ) : item.value}
+              {/* Stats row */}
+              <div className="flex flex-wrap gap-4 sm:gap-6 mt-6 sm:mt-8">
+                {items.map((item, idx) => (
+                  <div key={idx} className="flex flex-col">
+                    <div className={`text-2xl sm:text-3xl md:text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-black font-[500]'}`}>
+                      {typeof item.value === 'number' ? (
+                        <AnimatedNumber value={item.value} decimals={0} active={active} />
+                      ) : item.value}
+                    </div>
+                    <div className={`text-base sm:text-lg mt-1 ${isDarkMode ? 'text-white/50' : 'text-black'}`}>{item.label}</div>
                   </div>
-                  <div className="text-xs sm:text-sm text-white/50 mt-1">{item.label}</div>
+                ))}
+              </div>
+
+              {/* Coverage bar */}
+              <div className="mt-6 sm:mt-8">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm sm:text-base ${isDarkMode ? 'text-white/60' : 'text-[#1A1A1A]/60'}`}>Completion Rate</span>
+                  <span className={`font-bold text-sm sm:text-base ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{coverage}</span>
                 </div>
-              ))}
-            </div>
-
-            {/* Coverage bar */}
-            <div className="mt-6 sm:mt-8">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white/60 text-xs sm:text-sm">Completion Rate</span>
-                <span className="text-white font-bold text-sm sm:text-base">{coverage}</span>
+                <div className={`w-full max-w-xs h-2 sm:h-3 rounded-full overflow-hidden ${isDarkMode ? 'bg-white/10' : 'bg-[rgba(43,0,255,0.1)]'}`}>
+                  <div
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{
+                      width: active ? coverage : '0%',
+                      background: isDarkMode
+                        ? `linear-gradient(90deg, ${theme.primary}, ${theme.baseDark})`
+                        : 'linear-gradient(90deg,#6366f1, #2b00ff )'
+                    }}
+                  />
+                </div>
               </div>
-              <div className="w-full max-w-xs h-2 sm:h-3 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-1000 ease-out"
-                  style={{
-                    width: active ? coverage : '0%',
-                    background: 'linear-gradient(90deg, #3cc2d8, #000000)'
-                  }}
-                />
-              </div>
-            </div>
 
-            {/* Ratio badge */}
-            <div className="mt-4 sm:mt-6 inline-flex items-center gap-3 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(60, 194, 216, 0.2)' }}>
-              <span className="text-white/60 text-xs sm:text-sm">Sections Ratio</span>
-              <span className="text-white font-bold text-sm sm:text-base">{sectionsRated} : {totalSections}</span>
+              {/* Ratio badge */}
+              <div className="mt-4 sm:mt-6 inline-flex items-center gap-3 px-4 py-2 rounded-full" style={{ backgroundColor: isDarkMode ? `${theme.primary}33` : 'rgba(43,0,255,0.15)' }}>
+                <span className={`text-sm sm:text-base ${isDarkMode ? 'text-white/60' : 'text-[#1A1A1A]/60'}`}>Sections Ratio</span>
+                <span className={`font-bold text-sm sm:text-base ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{sectionsRated} : {totalSections}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -539,67 +628,78 @@ const StatsSlide = ({ stats, sectionsRated, totalSections, active }) => {
 };
 
 // Slide 4: Breakdown (with overlapping circles background)
-const BreakdownSlide = ({ sections, active }) => (
-  <div className="relative h-full overflow-hidden" style={{ backgroundColor: '#0a0f0f' }}>
+const BreakdownSlide = ({ sections, active, theme, isDarkMode }) => (
+  <div className="relative h-full overflow-hidden" style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}>
 
-    <div className='relative h-full w-full flex items-center justify-center'>
-      {/* Circle 1 - larger, darker teal, positioned left-center */}
+   <div className='relative h-full w-full flex items-center justify-center'>
+      {/* Circle 1 - larger, positioned left-center */}
       <div
         className="absolute rounded-full pointer-events-none aspect-square h-[70%]"
-        style={{ background: 'linear-gradient(135deg, #3cc2d8, #22626d, #131416, #131416)' }}
+        style={{ background: isDarkMode
+          ? `linear-gradient(135deg, ${theme.primary}, ${theme.primaryDark}, ${theme.baseDark}, ${theme.baseDark})`
+          : 'linear-gradient(135deg, #2b00ff, #6366f1, #e0e7ff, #e0e7ff)'
+        }}
       />
 
-      {/* Circle 2 - smaller, brighter teal, positioned right-bottom, overlapping */}
+      {/* Circle 2 - smaller, positioned right-bottom, overlapping */}
       <div
-        className="absolute rounded-full pointer-events-none aspect-square h-[50%] right-[20%] bottom-[20%]"
-        style={{ background: 'linear-gradient(135deg, #7affe6, #3a8b7e, #131416, #131416)' }}
+        className="absolute rounded-full pointer-events-none aspect-square h-[50%] tab:right-[20%] mac:bottom-[20%] top-[30%] mac:right-[20%] right-[60%]"
+        style={{ background: isDarkMode
+          ? `linear-gradient(135deg, ${theme.secondary}, ${theme.secondaryMid}, ${theme.baseDark}, ${theme.baseDark})`
+          : 'linear-gradient(135deg, #818cf8, #a5b4fc, #e0e7ff, #e0e7ff)'
+        }}
       />
     </div>
 
     {/* Content */}
     <div className="absolute inset-0 flex items-center">
-      <div className="flex flex-col sm:flex-row items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
-        {/* Left - Number */}
-        <div className="text-white font-inter font-bold text-[5rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10">
-          04
-        </div>
+      <div className="flex flex-col items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
+        {/* Number + Title + Content row */}
+        <div className="flex items-start">
+          <div className={`font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+            04
+          </div>
+          <div className="max-w-md lg:max-w-xl">
+            <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Section
+            </h1>
+            <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Breakdown
+            </h2>
+            <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md ${isDarkMode ? 'text-white/70' : 'text-[#1A1A1A]/70'}`}>
+              Performance across each section of your health assessment, showing your scores and areas of strength.
+            </p>
 
-        {/* Right - Text content */}
-        <div className="max-w-md lg:max-w-xl">
-          <h1 className="text-white font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight">
-            Section
-          </h1>
-          <h2 className="text-white font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1">
-            Breakdown
-          </h2>
-
-          <p className="text-white/70 font-manrope text-xs sm:text-sm md:text-base leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md">
-            Performance across each section of your health assessment, showing your scores and areas of strength.
-          </p>
-
-          {/* Section scores */}
-          <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
-            {sections?.map((section, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs sm:text-sm font-medium text-white">{section.section_name}</span>
-                  <span className="text-xs sm:text-sm font-bold text-white">{section.section_score.toFixed(1)}/10</span>
+            {/* Section scores */}
+            <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
+              {sections?.map((section, idx) => (
+                <div key={idx}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className={`text-sm sm:text-base font-medium ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{section.section_name}</span>
+                    <span className={`text-sm sm:text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{section.section_score.toFixed(1)}/10</span>
+                  </div>
+                  <div className={`w-full max-w-xs h-2 sm:h-3 rounded-full overflow-hidden ${isDarkMode ? 'bg-white/10' : 'bg-[rgba(43,0,255,0.1)]'}`}>
+                    <div
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: active ? `${(section.section_score / 10) * 100}%` : '0%',
+                        background: isDarkMode
+                          ? (section.section_score >= 7
+                              ? `linear-gradient(90deg, ${theme.primary}, ${theme.secondary})`
+                              : section.section_score >= 5
+                                ? `linear-gradient(90deg, ${theme.primaryDark}, ${theme.primary})`
+                                : `linear-gradient(90deg, ${theme.baseDark}, ${theme.primaryDark})`)
+                          : (section.section_score >= 7
+                              ? 'linear-gradient(90deg, #2b00ff, #6366f1)'
+                              : section.section_score >= 5
+                                ? 'linear-gradient(90deg, #6366f1, #818cf8)'
+                                : 'linear-gradient(90deg, #818cf8, #a5b4fc)')
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full max-w-xs h-2 sm:h-3 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-1000 ease-out"
-                    style={{
-                      width: active ? `${(section.section_score / 10) * 100}%` : '0%',
-                      background: section.section_score >= 7
-                        ? 'linear-gradient(90deg, #3cc2d8, #7affe6)'
-                        : section.section_score >= 5
-                          ? 'linear-gradient(90deg, #22626d, #3cc2d8)'
-                          : 'linear-gradient(90deg, #131416, #22626d)'
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -608,62 +708,64 @@ const BreakdownSlide = ({ sections, active }) => (
 );
 
 // Slide 5: Summary
-const SummarySlide = ({ overview }) => (
-  <div className="relative h-full overflow-hidden" style={{ backgroundColor: '#0a0a0a' }}>
-    {/* Decorative pills - aligned to right side */}
-    <div className="absolute right-[5%] md:right-[10%] top-1/2 -translate-y-1/2 flex h-[50%] md:h-[60%] gap-x-4 md:gap-x-6">
-      <div
-        className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-start justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(to top, #a5f7ff 0%, #3a8b7e 15%, black 70%)' }}
-      >
-        <div className="w-full aspect-square rounded-full bg-[#a5f7ff]" />
-      </div>
-      <div
-        className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-end justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(to bottom, #a5f7ff 0%, #3a8b7e 15%, black 70%)' }}
-      >
-        <div className="w-full aspect-square rounded-full bg-[#a5f7ff]" />
-      </div>
-      <div
-        className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-start justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(to top, #a5f7ff 0%, #3a8b7e 15%, black 70%)' }}
-      >
-        <div className="w-full aspect-square rounded-full bg-[#a5f7ff]" />
-      </div>
-    </div>
+const SummarySlide = ({ overview, theme, isDarkMode }) => (
+  <div className="relative h-full overflow-hidden" style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}>
+    {/* Centered container for content + pills */}
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="flex flex-col sm:flex-row items-center gap-8 md:gap-12 lg:gap-16 px-6">
+        {/* Content section */}
+        <div className="flex items-start">
+          <div className={`font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+            05
+          </div>
+          <div className="max-w-md lg:max-w-xl">
+            <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Comprehensive
+            </h1>
+            <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Summary
+            </h2>
+            <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md ${isDarkMode ? 'text-white/70' : 'text-[#1A1A1A]/70'}`}>
+              An overview of your complete health assessment, highlighting key findings and overall health status.
+            </p>
 
-    {/* Content */}
-    <div className="absolute inset-0 flex items-center">
-      <div className="flex flex-col sm:flex-row items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
-        {/* Left - Number */}
-        <div className="text-white font-inter font-bold text-[5rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10">
-          05
+            {/* Overview text box */}
+            <div className={`mt-6 sm:mt-8 p-4 sm:p-6 rounded-2xl max-w-sm md:max-w-md ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-[#1A1A1A]/5 border border-[#1A1A1A]/10'}`}>
+              <p className={`text-sm sm:text-base leading-relaxed line-clamp-6 ${isDarkMode ? 'text-white/80' : 'text-[#1A1A1A]/80'}`}>
+                {overview}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Right - Text content */}
-        <div className="max-w-md lg:max-w-xl">
-          <h1 className="text-white font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight">
-            Comprehensive
-          </h1>
-          <h2 className="text-white font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1">
-            Summary
-          </h2>
-
-          <p className="text-white/70 font-manrope text-xs sm:text-sm md:text-base leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md">
-            An overview of your complete health assessment, highlighting key findings and overall health status.
-          </p>
-
-          {/* Overview text box */}
-          <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 max-w-sm md:max-w-md">
-            <p className="text-white/80 text-xs sm:text-sm leading-relaxed line-clamp-6">
-              {overview}
-            </p>
+        {/* Decorative pills - hidden on mobile */}
+        <div className="hidden sm:flex h-[50vh] md:h-[60vh] gap-x-4 md:gap-x-6">
+          <div
+            className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-start justify-center overflow-hidden"
+            style={{ background: isDarkMode
+              ? `linear-gradient(to top, ${theme.accent} 0%, ${theme.secondaryMid} 15%, black 70%)`
+              : 'linear-gradient(to bottom, #c7d2fe 0%, #818cf8 15%, #2b00ff 70%)'
+            }}
+          >
+            <div className="w-full aspect-square rounded-full" style={{ backgroundColor: isDarkMode ? theme.accent : '#c7d2fe' }} />
           </div>
-
-          {/* Badge */}
-          <div className="mt-4 sm:mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(165, 247, 255, 0.15)' }}>
-            <div className="w-2 h-2 rounded-full bg-[#a5f7ff]" />
-            <span className="text-[#a5f7ff] text-xs sm:text-sm font-medium">AI-Generated Analysis</span>
+          <div
+            className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-end justify-center overflow-hidden"
+            style={{ background: isDarkMode
+              ? `linear-gradient(to bottom, ${theme.accent} 0%, ${theme.secondaryMid} 15%, black 70%)`
+              : 'linear-gradient(to top, #c7d2fe 0%, #818cf8 15%, #2b00ff 70%)'
+            }}
+          >
+            <div className="w-full aspect-square rounded-full" style={{ backgroundColor: isDarkMode ? theme.accent : '#c7d2fe' }} />
+          </div>
+          <div
+            className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-start justify-center overflow-hidden"
+            style={{ background: isDarkMode
+              ? `linear-gradient(to top, ${theme.accent} 0%, ${theme.secondaryMid} 15%, black 70%)`
+              : 'linear-gradient(to bottom, #c7d2fe 0%, #818cf8 15%, #2b00ff 70%)'
+            }}
+          >
+            <div className="w-full aspect-square rounded-full" style={{ backgroundColor: isDarkMode ? theme.accent : '#c7d2fe' }} />
           </div>
         </div>
       </div>
@@ -672,60 +774,69 @@ const SummarySlide = ({ overview }) => (
 );
 
 // Slide 06: Key Insights (Dark + overlapping circles background)
-const KeyInsightsSlide = ({ insights }) => (
-  <div className="relative h-full overflow-hidden" style={{ backgroundColor: '#0a0f0f' }}>
+const KeyInsightsSlide = ({ insights, theme, isDarkMode }) => (
+  <div className="relative h-full overflow-hidden" style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}>
 
     <div className='relative h-full w-full flex items-center justify-center'>
-      {/* Circle 1 - larger, darker teal, positioned left-center */}
+      {/* Circle 1 - larger, positioned left-center */}
       <div
         className="absolute rounded-full pointer-events-none aspect-square h-[70%]"
-        style={{ background: 'linear-gradient(135deg, #3cc2d8, #22626d, #131416, #131416)' }}
+        style={{ background: isDarkMode
+          ? `linear-gradient(135deg, ${theme.primary}, ${theme.primaryDark}, ${theme.baseDark}, ${theme.baseDark})`
+          : 'linear-gradient(135deg, #2b00ff, #6366f1, #e0e7ff, #e0e7ff)'
+        }}
       />
 
-      {/* Circle 2 - smaller, brighter teal, positioned right-bottom, overlapping */}
+      {/* Circle 2 - smaller, positioned right-bottom, overlapping */}
       <div
-        className="absolute rounded-full pointer-events-none aspect-square h-[50%] right-[20%] bottom-[20%]"
-        style={{ background: 'linear-gradient(135deg, #7affe6, #3a8b7e, #131416, #131416)' }}
+        className="absolute rounded-full pointer-events-none aspect-square h-[50%] tab:right-[20%] mac:bottom-[20%] top-[30%] mac:right-[20%] right-[60%]"
+        style={{ background: isDarkMode
+          ? `linear-gradient(135deg, ${theme.secondary}, ${theme.secondaryMid}, ${theme.baseDark}, ${theme.baseDark})`
+          : 'linear-gradient(135deg, #818cf8, #a5b4fc, #e0e7ff, #e0e7ff)'
+        }}
       />
     </div>
 
     {/* Content */}
     <div className="absolute inset-0 flex items-center">
-      <div className="flex flex-col sm:flex-row items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
-        {/* Left - Number */}
-        <div className="text-white font-inter font-bold text-[5rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10">
-          06
-        </div>
+      <div className="flex flex-col items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
+        {/* Number + Title + Content row */}
+        <div className="flex items-start">
+          <div className={`font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+            06
+          </div>
+          <div className="max-w-md lg:max-w-xl">
+            <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Key
+            </h1>
+            <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mac:mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Insights
+            </h2>
+            <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md ${isDarkMode ? 'text-white/70' : 'text-[#1A1A1A]/70'}`}>
+              Important findings from your health assessment analysis.
+            </p>
 
-        {/* Right - Content */}
-        <div className="max-w-md lg:max-w-xl">
-          <h1 className="text-white font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight">
-            Key
-          </h1>
-          <h2 className="text-white font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1">
-            Insights
-          </h2>
-
-          <p className="text-white/70 font-manrope text-xs sm:text-sm md:text-base leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md">
-            Important findings from your health assessment analysis.
-          </p>
-
-          {/* Insights list */}
-          <div className="mt-6 sm:mt-8 space-y-3 max-h-[40vh] overflow-y-auto pr-2">
-            {insights?.slice(0, 4).map((insight, idx) => (
-              <div
-                key={idx}
-                className="flex items-start gap-3 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10"
-              >
+            {/* Insights list */}
+            <div className="mt-6 sm:mt-8 space-y-3 max-h-[40vh] overflow-y-auto pr-2">
+              {insights?.slice(0, 4).map((insight, idx) => (
                 <div
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: idx === 0 ? 'linear-gradient(135deg, #3cc2d8, #22626d)' : 'rgba(255,255,255,0.1)' }}
+                  key={idx}
+                  className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-[#1A1A1A]/5 border border-[#1A1A1A]/10'}`}
                 >
-                  <span className="text-white font-bold text-sm">{idx + 1}</span>
+                  <div
+                    className="w-8 h-8 mt-1 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: isDarkMode
+                        ? (idx === 0 ? `linear-gradient(135deg, ${theme.accent}, ${theme.secondaryMid})` : `${theme.accent}33`)
+                        : (idx === 0 ? 'linear-gradient(135deg, #1A1A1A, #3a3a3a)' : 'rgba(26, 26, 26, 0.2)')
+                    }}
+                  >
+                    <span className="text-white font-bold text-sm font-montserrat">{idx + 1}</span>
+                  </div>
+                  <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed ${isDarkMode ? 'text-white/80' : 'text-[#1A1A1A]/80'}`}>{insight}</p>
                 </div>
-                <p className="text-white/80 text-xs sm:text-sm leading-relaxed">{insight}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -734,87 +845,105 @@ const KeyInsightsSlide = ({ insights }) => (
 );
 
 // Slide 07: Priority Actions (Dark + cyan pills background)
-const PriorityActionsSlide = ({ actions }) => (
-  <div className="relative h-full overflow-hidden" style={{ backgroundColor: '#0a0a0a' }}>
-    {/* Decorative pills - aligned to right side */}
-    <div className="absolute right-[5%] md:right-[10%] top-1/2 -translate-y-1/2 flex h-[50%] md:h-[60%] gap-x-4 md:gap-x-6">
+const PriorityActionsSlide = ({ actions, theme, isDarkMode }) => (
+  <div className="relative h-full overflow-hidden" style={{ background: isDarkMode ? theme.darkBg : 'linear-gradient(135deg, #f8faff 0%, #e0e7ff 100%)' }}>
+    {/* Decorative pills - aligned to right side, hidden on mobile */}
+    <div className="hidden sm:flex absolute right-[5%] md:right-[10%] top-1/2 -translate-y-1/2 h-[50%] md:h-[60%] gap-x-4 md:gap-x-6">
       <div
         className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-start justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(to top, #a5f7ff 0%, #3a8b7e 15%, black 70%)' }}
+        style={{ background: isDarkMode
+          ? `linear-gradient(to top, ${theme.accent} 0%, ${theme.secondaryMid} 15%, black 70%)`
+          : 'linear-gradient(to bottom, #c7d2fe 0%, #818cf8 15%, #2b00ff 70%)'
+        }}
       >
-        <div className="w-full aspect-square rounded-full bg-[#a5f7ff]" />
+        <div className="w-full aspect-square rounded-full" style={{ backgroundColor: isDarkMode ? theme.accent : '#c7d2fe' }} />
       </div>
       <div
         className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-end justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(to bottom, #a5f7ff 0%, #3a8b7e 15%, black 70%)' }}
+        style={{ background: isDarkMode
+          ? `linear-gradient(to bottom, ${theme.accent} 0%, ${theme.secondaryMid} 15%, black 70%)`
+          : 'linear-gradient(to top, #c7d2fe 0%, #818cf8 15%, #2b00ff 70%)'
+        }}
       >
-        <div className="w-full aspect-square rounded-full bg-[#a5f7ff]" />
+        <div className="w-full aspect-square rounded-full" style={{ backgroundColor: isDarkMode ? theme.accent : '#c7d2fe' }} />
       </div>
       <div
         className="w-20 md:w-28 lg:w-32 rounded-full relative flex items-start justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(to top, #a5f7ff 0%, #3a8b7e 15%, black 70%)' }}
+        style={{ background: isDarkMode
+          ? `linear-gradient(to top, ${theme.accent} 0%, ${theme.secondaryMid} 15%, black 70%)`
+          : 'linear-gradient(to bottom, #c7d2fe 0%, #818cf8 15%, #2b00ff 70%)'
+        }}
       >
-        <div className="w-full aspect-square rounded-full bg-[#a5f7ff]" />
+        <div className="w-full aspect-square rounded-full" style={{ backgroundColor: isDarkMode ? theme.accent : '#c7d2fe' }} />
       </div>
     </div>
 
     {/* Content */}
     <div className="absolute inset-0 flex items-center">
-      <div className="flex flex-col sm:flex-row items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
-        {/* Left - Number */}
-        <div className="text-white font-inter font-bold text-[5rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10">
-          07
-        </div>
+      <div className="flex flex-col items-start px-6 sm:px-0 sm:ml-[8%] md:ml-[12%] lg:ml-[15%]">
+        {/* Number + Title + Content row */}
+        <div className="flex items-start">
+          <div className={`font-inter font-bold text-[4rem] sm:text-[7rem] md:text-[10rem] leading-none -mt-[0.1em] mr-4 sm:mr-6 md:mr-10 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+            07
+          </div>
+          <div className="max-w-md lg:max-w-xl">
+            <h1 className={`font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Priority
+            </h1>
+            <h2 className={`font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1 ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>
+              Actions
+            </h2>
+            <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md ${isDarkMode ? 'text-white/70' : 'text-[#1A1A1A]/70'}`}>
+              Recommended steps to improve your health outcomes.
+            </p>
 
-        {/* Right - Content */}
-        <div className="max-w-md lg:max-w-xl">
-          <h1 className="text-white font-inter font-bold text-2xl sm:text-3xl md:text-5xl leading-tight">
-            Priority
-          </h1>
-          <h2 className="text-white font-manrope font-medium text-xl sm:text-2xl md:text-4xl mt-1">
-            Actions
-          </h2>
-
-          <p className="text-white/70 font-manrope text-xs sm:text-sm md:text-base leading-relaxed mt-4 sm:mt-6 max-w-sm md:max-w-md">
-            Recommended steps to improve your health outcomes.
-          </p>
-
-          {/* Action cards */}
-          <div className="mt-6 sm:mt-8 space-y-4 max-h-[45vh] overflow-y-auto pr-2">
-            {actions?.slice(0, 2).map((action, idx) => (
-              <div
-                key={idx}
-                className="p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/10"
-              >
-                {/* Action header */}
-                <div className="flex items-start gap-3 mb-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: idx === 0 ? 'linear-gradient(135deg, #a5f7ff, #3a8b7e)' : 'rgba(165, 247, 255, 0.2)' }}
-                  >
-                    <span className="text-white font-bold text-sm">{idx + 1}</span>
-                  </div>
-                  <h4 className="text-white font-semibold text-sm sm:text-base leading-tight">{action.action}</h4>
-                </div>
-
-                {/* Rationale */}
-                <p className="text-white/60 text-xs sm:text-sm leading-relaxed mb-3 pl-11">
-                  {action.rationale}
-                </p>
-
-                {/* Expected Impact badge */}
-                {action.expected_impact && (
-                  <div className="pl-11">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#a5f7ff]/10 border border-[#a5f7ff]/20">
-                      <svg className="w-4 h-4 text-[#a5f7ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                      <span className="text-[#a5f7ff] text-xs font-medium">{action.expected_impact}</span>
+            {/* Action cards */}
+            <div className="mt-6 sm:mt-8 space-y-4 max-h-[45vh] overflow-y-auto pr-2">
+              {actions?.slice(0, 2).map((action, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 sm:p-5 rounded-2xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-[#1A1A1A]/5 border border-[#1A1A1A]/10'}`}
+                >
+                  {/* Action header */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1"
+                      style={{
+                        background: isDarkMode
+                          ? (idx === 0 ? `linear-gradient(135deg, ${theme.accent}, ${theme.secondaryMid})` : `${theme.accent}33`)
+                          : (idx === 0 ? 'linear-gradient(135deg, #1A1A1A, #3a3a3a)' : 'rgba(26, 26, 26, 0.2)')
+                      }}
+                    >
+                      <span className="text-white font-bold text-sm">{idx + 1}</span>
                     </div>
+                    <h4 className={`font-montserrat font-[500] text-base md:text-lg leading-tight ${isDarkMode ? 'text-white' : 'text-[#1A1A1A]'}`}>{action.action}</h4>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Rationale */}
+                  <p className={`font-montserrat font-[500] text-base md:text-lg leading-relaxed mb-3 pl-11 ${isDarkMode ? 'text-white/60' : 'text-[#1A1A1A]/60'}`}>
+                    {action.rationale}
+                  </p>
+
+                  {/* Expected Impact badge */}
+                  {action.expected_impact && (
+                    <div className="pl-11">
+                      <div
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                        style={{
+                          backgroundColor: isDarkMode ? `${theme.accent}1a` : 'rgba(59, 130, 246, 0.1)',
+                          border: isDarkMode ? `1px solid ${theme.accent}33` : '1px solid rgba(59, 130, 246, 0.2)'
+                        }}
+                      >
+                        <svg className="w-6 h-6" style={{ color: isDarkMode ? theme.accent : '#3b82f6' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        <span style={{ color: isDarkMode ? theme.accent : '#3b82f6' }} className="text-sm font-medium ">{action.expected_impact}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1247,6 +1376,8 @@ const AnalyticsReport = () => {
   const [formConfig, setFormConfig] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1); // 1 = forward, -1 = backward
+  const [reportTheme, setReportTheme] = useState(DEFAULT_THEME);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Dark/Light theme toggle
 
   // Lock to prevent rapid navigation (simple debounce)
   const isLockedRef = useRef(false);
@@ -1261,6 +1392,10 @@ const AnalyticsReport = () => {
           setFormConfig(config);
           applyTheme(config.theme_color || "default", config.custom_colors);
           applyThemeMethod(config.theme_method || "solid");
+
+          // Set report theme from form config
+          const themeName = config.report_theme || config.theme_color || 'teal';
+          setReportTheme(REPORT_THEMES[themeName] || DEFAULT_THEME);
         }
       } catch (err) {
         console.error("Error loading form config:", err);
@@ -1296,13 +1431,13 @@ const AnalyticsReport = () => {
     // Slide 0: Cover Page
     slides.push({
       id: 'cover',
-      render: () => <CoverSlide />,
+      render: () => <CoverSlide theme={reportTheme} isDarkMode={isDarkMode} />,
     });
 
     // Slide 1: Content Index - Introduction
     slides.push({
       id: 'content-index',
-      render: () => <ContentIndexSlide sections={section_ratings} />,
+      render: () => <ContentIndexSlide sections={section_ratings} theme={reportTheme} isDarkMode={isDarkMode} />,
     });
 
     // Slide 2: Hero - Overall Score
@@ -1313,6 +1448,8 @@ const AnalyticsReport = () => {
           score={statistics?.average_rating || 0}
           formName={formConfig?.name || 'Health Assessment'}
           active={active}
+          theme={reportTheme}
+          isDarkMode={isDarkMode}
         />
       ),
     });
@@ -1326,6 +1463,8 @@ const AnalyticsReport = () => {
           sectionsRated={reportData.sections_rated}
           totalSections={reportData.total_sections}
           active={active}
+          theme={reportTheme}
+          isDarkMode={isDarkMode}
         />
       ),
     });
@@ -1333,7 +1472,7 @@ const AnalyticsReport = () => {
     // Slide 4: Breakdown - Section Scores
     slides.push({
       id: 'breakdown',
-      render: (active) => <BreakdownSlide sections={section_ratings} active={active} />,
+      render: (active) => <BreakdownSlide sections={section_ratings} active={active} theme={reportTheme} isDarkMode={isDarkMode} />,
     });
 
     // Slide 5: Summary - Comprehensive Overview & Insights
@@ -1342,6 +1481,8 @@ const AnalyticsReport = () => {
       render: () => (
         <SummarySlide
           overview={llm_insights?.comprehensive_summary?.overview || 'No summary available.'}
+          theme={reportTheme}
+          isDarkMode={isDarkMode}
         />
       ),
     });
@@ -1352,6 +1493,8 @@ const AnalyticsReport = () => {
       render: () => (
         <KeyInsightsSlide
           insights={llm_insights?.comprehensive_summary?.key_insights || []}
+          theme={reportTheme}
+          isDarkMode={isDarkMode}
         />
       ),
     });
@@ -1362,6 +1505,8 @@ const AnalyticsReport = () => {
       render: () => (
         <PriorityActionsSlide
           actions={llm_insights?.recommendations?.priority_actions || []}
+          theme={reportTheme}
+          isDarkMode={isDarkMode}
         />
       ),
     });
@@ -1501,6 +1646,9 @@ const AnalyticsReport = () => {
       ref={containerRef}
       className="h-screen bg-white overflow-hidden relative"
     >
+      {/* Theme toggle button */}
+      <ThemeToggle isDarkMode={isDarkMode} onToggle={() => setIsDarkMode(!isDarkMode)} />
+
       {/* Slides with AnimatePresence for smooth transitions */}
       <AnimatePresence initial={false} custom={slideDirection}>
         {slides.map((slide, idx) => (
@@ -1509,6 +1657,7 @@ const AnalyticsReport = () => {
             slideKey={slide.id}
             active={idx === currentSlide}
             direction={slideDirection}
+            isDarkMode={isDarkMode}
           >
             {slide.render(idx === currentSlide)}
           </Slide>
