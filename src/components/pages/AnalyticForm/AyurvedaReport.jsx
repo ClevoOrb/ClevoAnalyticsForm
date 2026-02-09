@@ -6,11 +6,12 @@
  * dosha changes, health score, and personalized recommendations.
  */
 
-import { useState, useEffect, useRef, isValidElement, cloneElement } from 'react';
+import { useState, useEffect, useRef, useMemo, isValidElement, cloneElement } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useAnalyticResponses from '../../../hooks/useAnalyticResponses';
 import bgImg from "../../assets/bg.jpg";
+import logo from "../../assets/genoLogo.png";
 
 // Dosha images
 import vataImg from "../../assets/vatta.png";
@@ -74,6 +75,38 @@ const itemVariants = {
     y: 0,
     transition: { duration: 0.5, ease: 'easeOut' },
   },
+};
+
+// ============================================
+// MOBILE DETECTION HOOK
+// ============================================
+/**
+ * useIsMobile - Returns true when the viewport width is below `breakpoint` px.
+ *
+ * Uses window.matchMedia instead of a resize listener because matchMedia only
+ * fires when the media query result *changes* (i.e. when crossing the 650px
+ * threshold), rather than on every pixel of resize. Much more performant.
+ *
+ * @param {number} breakpoint - Width threshold in pixels (default 650)
+ * @returns {boolean} - true when viewport < breakpoint
+ */
+const useIsMobile = (breakpoint = 650) => {
+  const query = `(max-width: ${breakpoint - 1}px)`;
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const handler = (e) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    // Sync in case it changed between render and effect
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener('change', handler);
+  }, [query]);
+
+  return isMobile;
 };
 
 // ============================================
@@ -602,14 +635,14 @@ const createSlideMeasureElement = (title, subtitle) => {
 
   // Title element — same classes as the <motion.h2>
   const titleEl = document.createElement('h2');
-  titleEl.className = 'text-3xl sm:text-4xl md:text-6xl text-center mb-2';
+  titleEl.className = 'text-4xl sm:text-4xl md:text-6xl text-center mb-2';
   titleEl.style.fontFamily = 'JAINI, serif';
   titleEl.style.color = COLORS.primary;
   titleEl.textContent = cleanHeadingText(title) || '';
 
   // Subtitle element — same classes as the <motion.p>
   const subtitleEl = document.createElement('p');
-  subtitleEl.className = 'text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase';
+  subtitleEl.className = 'text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase';
   subtitleEl.style.color = COLORS.textMuted;
   // Pad with worst-case pagination so we reserve enough vertical space
   subtitleEl.textContent = subtitle ? `${subtitle} (99/99)` : '';
@@ -818,6 +851,8 @@ const buildTextSlides = (text, baseId, title, subtitle) => {
 
   return chunks.map((chunk, i) => ({
     id: chunks.length === 1 ? baseId : `${baseId}-chunk-${i}`,
+    topic: title,
+    title: chunks.length > 1 ? `${subtitle} (${i + 1}/${chunks.length})` : subtitle,
     render: (active) => (
       <TextContentSlide
         title={title}
@@ -1124,6 +1159,134 @@ const ProgressDots = ({ current, total, onNavigate }) => (
         aria-label={`Go to slide ${idx + 1}`}
       />
     ))}
+  </div>
+);
+
+// ============================================
+// MOBILE TOPIC NAV COMPONENT
+// ============================================
+/**
+ * MobileTopicNav — a collapsible top navigation bar visible only on mobile (< 650px).
+ *
+ * Why: On mobile the right-side progress dots are tiny and unhelpful. This bar
+ * shows the current topic name and, when tapped, expands to list all topics for
+ * quick jump-to navigation. On desktop (>= 650px) it is hidden via `tab:hidden`.
+ */
+const MobileTopicNav = ({ topicGroups, currentTopic, isOpen, onToggle, onNavigate }) => (
+  <div className="fixed top-0 left-0 right-0 z-50 tab:hidden">
+    {/* Backdrop overlay — closes the dropdown when tapping outside */}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="mobile-nav-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-40"
+          onClick={onToggle}
+        />
+      )}
+    </AnimatePresence>
+
+    {/* Nav bar + dropdown container — sits above the backdrop */}
+    <div className="relative z-50">
+      {/* Collapsed bar — always visible on mobile */}
+      <button
+        onClick={onToggle}
+        className="w-full grid grid-cols-3 items-center px-4 py-3 text-sm font-medium"
+        style={{
+          backgroundColor: 'rgba(255, 248, 240, 0.92)',
+          backdropFilter: 'blur(8px)',
+          borderBottom: '1px solid rgba(113, 0, 0, 0.1)',
+          color: COLORS.primary,
+        }}
+      >
+        <img src={logo} alt="Sections" className="w-[30%] justify-self-start" />
+        <div className="truncate font-jaini justify-self-center text-center text-3xl" style={{ color: COLORS.primary }}>
+          Ayurveda Report
+        </div>
+        <div className='flex items-center gap-x-1 justify-self-end'>
+          <motion.svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-1"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </motion.svg>
+        </div>
+      </button>
+
+      {/* Expanded dropdown — lists all topic groups */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="mobile-nav-dropdown"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+            style={{
+              backgroundColor: 'rgba(255, 248, 240, 0.96)',
+              backdropFilter: 'blur(8px)',
+              borderBottom: '1px solid rgba(113, 0, 0, 0.1)',
+            }}
+          >
+            <div className="py-1">
+              {topicGroups.map((group) => {
+                const isActive = group.topic === currentTopic;
+                return (
+                  <button
+                    key={group.topic}
+                    onClick={() => onNavigate(group.firstSlideIndex)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors"
+                    style={{
+                      backgroundColor: isActive ? 'rgba(113, 0, 0, 0.07)' : 'transparent',
+                    }}
+                  >
+                    {/* Active indicator dot */}
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0 transition-colors"
+                      style={{
+                        backgroundColor: isActive ? COLORS.primary : COLORS.dotInactive,
+                      }}
+                    />
+                    {/* Topic name */}
+                    <span
+                      className="truncate opensans-regular"
+                      style={{
+                        color: isActive ? COLORS.primary : COLORS.textBrown,
+                        fontWeight: isActive ? 600 : 400,
+                      }}
+                    >
+                      {group.topic}
+                    </span>
+                    {/* Slide count badge (only if more than 1 slide in this topic) */}
+                    {group.slideCount > 1 && (
+                      <span
+                        className="ml-auto text-xs flex-shrink-0 opacity-50"
+                        style={{ color: COLORS.textBrown }}
+                      >
+                        {group.slideCount} slides
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   </div>
 );
 
@@ -1581,45 +1744,30 @@ const DoshaComparisonBar = ({ label, prakritiValue, vikritiValue, change, color,
 // ============================================
 // INTRO SLIDE COMPONENT
 // ============================================
-const IntroSlide = ({ active }) => (
+const IntroSlide = ({ active, isMobile }) => (
   <div
-    className="relative w-full h-full min-h-[100vh] overflow-hidden"
-    style={{
+    className={`relative w-full ${isMobile ? 'h-full' : 'h-full min-h-[100vh] overflow-hidden'}`}
+    style={isMobile ? {} : {
       backgroundImage: `url(${bgImg})`,
       backgroundSize: "cover",
       backgroundPosition: "center",
     }}
   >
-    {/* Corner decorations */}
+    {/* Corner decorations - only on intro for mobile, always on desktop */}
     <CornerDecorations />
-
-    {/* Top Decorative Border */}
-    {/* <img
-      src={borderImg}
-      alt=""
-      className="absolute top-4 left-0 w-full h-auto z-20"
-    /> */}
-
-    {/* Bottom Decorative Border */}
-    {/* <img
-      src={borderImg}
-      alt=""
-      className="absolute bottom-4 left-0 w-full h-auto z-20"
-      style={{ transform: 'scaleY(-1)' }}
-    /> */}
 
     {/* Content */}
     <motion.div
-      className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 py-10 sm:py-14 md:py-20"
+      className={`relative z-10 w-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 ${isMobile ? 'h-full py-8' : 'h-full py-10 sm:py-14 md:py-20'}`}
       variants={containerVariants}
       initial="hidden"
-      animate={active ? "visible" : "hidden"}
+      animate={(active || isMobile) ? "visible" : "hidden"}
     >
 
 
       <motion.h2
         variants={itemVariants}
-        className="text-3xl sm:text-4xl md:text-[6rem] text-center mb-16"
+        className="text-3xl sm:text-4xl md:text-[6rem] text-center sm:mb-16"
         style={{ fontFamily: 'SAMAN, serif', color: COLORS.primary }}
       >
         Welcome to
@@ -1629,44 +1777,46 @@ const IntroSlide = ({ active }) => (
         className="text-3xl sm:text-4xl md:text-[6rem] text-center mb-6"
         style={{ fontFamily: 'SAMAN, serif', color: COLORS.primary }}
       >
-         Ayurveda Report
+        Ayurveda Report
       </motion.h2>
 
       <motion.p
         variants={itemVariants}
-        className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+        className="text-base sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center font-poppins"
         style={{ color: COLORS.textMuted }}
       >
         Discover your unique constitution and personalized wellness insights
       </motion.p>
 
-      {/* Scroll indicator */}
-      <motion.div
-        variants={itemVariants}
-        className="absolute bottom-8 sm:bottom-12 left-0 right-0 flex flex-col items-center gap-2"
-      >
-        <span className="text-sm font-poppins" style={{ color: COLORS.textMuted }}>
-          Scroll to explore
-        </span>
+      {/* Scroll indicator - hidden on mobile since page scrolls naturally */}
+      {!isMobile && (
         <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          variants={itemVariants}
+          className="absolute bottom-8 sm:bottom-12 left-0 right-0 flex flex-col items-center gap-2"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke={COLORS.textBrown}
-            viewBox="0 0 24 24"
+          <span className="text-sm font-poppins" style={{ color: COLORS.textMuted }}>
+            Scroll to explore
+          </span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke={COLORS.textBrown}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
     </motion.div>
   </div>
 );
@@ -1674,50 +1824,37 @@ const IntroSlide = ({ active }) => (
 // ============================================
 // PRAKRITI SLIDE COMPONENT (Birth Constitution)
 // ============================================
-const PrakritiSlide = ({ prakriti, active }) => {
+const PrakritiSlide = ({ prakriti, active, isMobile }) => {
   if (!prakriti) return null;
 
   return (
     <div
-      className="relative w-full h-full min-h-[100vh] overflow-hidden"
-      style={{
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {/* Corner decorations */}
-      <CornerDecorations />
-
-      {/* Decorative Borders */}
-      {/* <img
-        src={borderImg}
-        alt=""
-        className="absolute top-4 left-0 w-full h-auto z-20"
-      />
-      <img
-        src={borderImg}
-        alt=""
-        className="absolute bottom-4 left-0 w-full h-auto z-20"
-        style={{ transform: 'scaleY(-1)' }}
-      /> */}
+      {/* Corner decorations - skip on mobile to reduce clutter */}
+      {!isMobile && <CornerDecorations />}
 
       <motion.div
-        className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 py-10 sm:py-14 md:py-20"
+        className={`relative z-10 w-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 ${isMobile ? 'py-8' : 'h-full py-10 sm:py-14 md:py-20'}`}
         variants={containerVariants}
         initial="hidden"
-        animate={active ? "visible" : "hidden"}
+        animate={(active || isMobile) ? "visible" : "hidden"}
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center"
+          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Prakriti
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
           style={{ color: COLORS.textMuted }}
         >
           Your Birth Constitution
@@ -1762,50 +1899,37 @@ const PrakritiSlide = ({ prakriti, active }) => {
 // ============================================
 // VIKRITI SLIDE COMPONENT (Current State)
 // ============================================
-const VikritiSlide = ({ vikriti, active }) => {
+const VikritiSlide = ({ vikriti, active, isMobile }) => {
   if (!vikriti) return null;
 
   return (
     <div
-      className="relative w-full h-full min-h-[100vh] overflow-hidden"
-      style={{
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {/* Corner decorations */}
-      <CornerDecorations />
-
-      {/* Decorative Borders */}
-      {/* <img
-        src={borderImg}
-        alt=""
-        className="absolute top-4 left-0 w-full h-auto z-20"
-      />
-      <img
-        src={borderImg}
-        alt=""
-        className="absolute bottom-4 left-0 w-full h-auto z-20"
-        style={{ transform: 'scaleY(-1)' }}
-      /> */}
+      {/* Corner decorations - skip on mobile */}
+      {!isMobile && <CornerDecorations />}
 
       <motion.div
-        className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 py-10 sm:py-14 md:py-20"
+        className={`relative z-10 w-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 ${isMobile ? 'py-8' : 'h-full py-10 sm:py-14 md:py-20'}`}
         variants={containerVariants}
         initial="hidden"
-        animate={active ? "visible" : "hidden"}
+        animate={(active || isMobile) ? "visible" : "hidden"}
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center mb-2"
+          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Vikriti
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
           style={{ color: COLORS.textMuted }}
         >
           Your Current State
@@ -1849,52 +1973,39 @@ const VikritiSlide = ({ vikriti, active }) => {
 // ============================================
 // DOSHA CHANGES SLIDE COMPONENT
 // ============================================
-const DoshaChangesSlide = ({ constitution, doshaChanges, active }) => {
+const DoshaChangesSlide = ({ constitution, doshaChanges, active, isMobile }) => {
   if (!constitution || !doshaChanges) return null;
 
   const { prakriti, vikriti } = constitution;
 
   return (
     <div
-      className="relative w-full h-full min-h-[100vh] overflow-hidden"
-      style={{
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {/* Corner decorations */}
-      <CornerDecorations />
-
-      {/* Decorative Borders */}
-      {/* <img
-        src={borderImg}
-        alt=""
-        className="absolute top-4 left-0 w-full h-auto z-20"
-      />
-      <img
-        src={borderImg}
-        alt=""
-        className="absolute bottom-4 left-0 w-full h-auto z-20"
-        style={{ transform: 'scaleY(-1)' }}
-      /> */}
+      {/* Corner decorations - skip on mobile */}
+      {!isMobile && <CornerDecorations />}
 
       <motion.div
-        className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 py-10 sm:py-14 md:py-20"
+        className={`relative z-10 w-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 ${isMobile ? 'py-8' : 'h-full py-10 sm:py-14 md:py-20'}`}
         variants={containerVariants}
         initial="hidden"
-        animate={active ? "visible" : "hidden"}
+        animate={(active || isMobile) ? "visible" : "hidden"}
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center mb-2"
+          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Dosha Changes
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
           style={{ color: COLORS.textMuted }}
         >
           How your constitution has shifted
@@ -1949,7 +2060,7 @@ const DoshaChangesSlide = ({ constitution, doshaChanges, active }) => {
 // ============================================
 // HEALTH SCORE SLIDE COMPONENT
 // ============================================
-const HealthScoreSlide = ({ healthAssessment, active }) => {
+const HealthScoreSlide = ({ healthAssessment, active, isMobile }) => {
   if (!healthAssessment) return null;
 
   const score = healthAssessment.overall_score || 0;
@@ -1957,45 +2068,32 @@ const HealthScoreSlide = ({ healthAssessment, active }) => {
 
   return (
     <div
-      className="relative w-full h-full min-h-[100vh] overflow-hidden"
-      style={{
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {/* Corner decorations */}
-      <CornerDecorations />
-
-      {/* Decorative Borders */}
-      {/* <img
-        src={borderImg}
-        alt=""
-        className="absolute top-4 left-0 w-full h-auto z-20"
-      />
-      <img
-        src={borderImg}
-        alt=""
-        className="absolute bottom-4 left-0 w-full h-auto z-20"
-        style={{ transform: 'scaleY(-1)' }}
-      /> */}
+      {/* Corner decorations - skip on mobile */}
+      {!isMobile && <CornerDecorations />}
 
       <motion.div
-        className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 py-10 sm:py-14 md:py-20"
+        className={`relative z-10 w-full flex flex-col items-center justify-center px-6 sm:px-8 md:px-12 ${isMobile ? 'py-8' : 'h-full py-10 sm:py-14 md:py-20'}`}
         variants={containerVariants}
         initial="hidden"
-        animate={active ? "visible" : "hidden"}
+        animate={(active || isMobile) ? "visible" : "hidden"}
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center"
+          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Health Score
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
           style={{ color: COLORS.textMuted }}
         >
           Your Overall Wellness
@@ -2087,7 +2185,8 @@ const TextContentSlide = ({ title, subtitle, content, active }) => {
       /> */}
 
       {/* Scrollable content container - positioned inside the borders */}
-      <div className="absolute top-10 bottom-10 left-6 right-6 sm:top-12 sm:bottom-12 sm:left-8 sm:right-8 md:top-16 md:bottom-16 md:left-12 md:right-12 overflow-y-auto z-10">
+      {/* top-14 on mobile gives extra room for the collapsible topic nav bar; tab:top-10 restores default at 650px+ */}
+      <div className="absolute top-14 tab:top-10 bottom-10 left-6 right-6 sm:top-12 sm:bottom-12 sm:left-8 sm:right-8 md:top-16 md:bottom-16 md:left-12 md:right-12 overflow-y-auto z-10">
         <motion.div
           className="w-full min-h-full flex flex-col px-4 sm:px-6 py-6 sm:py-8"
           variants={containerVariants}
@@ -2096,7 +2195,7 @@ const TextContentSlide = ({ title, subtitle, content, active }) => {
         >
           <motion.h2
             variants={itemVariants}
-            className="text-3xl sm:text-4xl md:text-6xl text-center mb-2"
+            className="text-4xl sm:text-4xl md:text-6xl text-center mb-2"
             style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
           >
             {cleanHeadingText(title)}
@@ -2104,7 +2203,7 @@ const TextContentSlide = ({ title, subtitle, content, active }) => {
           {subtitle && (
             <motion.p
               variants={itemVariants}
-              className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+              className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
               style={{ color: COLORS.textMuted }}
             >
               {subtitle}
@@ -2162,7 +2261,8 @@ const SectionsSlide = ({ title, subtitle, sections, active }) => {
       /> */}
 
       {/* Scrollable content container - positioned inside the borders */}
-      <div className="absolute top-10 bottom-10 left-6 right-6 sm:top-12 sm:bottom-12 sm:left-8 sm:right-8 md:top-16 md:bottom-16 md:left-12 md:right-12 overflow-y-auto z-10">
+      {/* top-14 on mobile gives extra room for the collapsible topic nav bar; tab:top-10 restores default at 650px+ */}
+      <div className="absolute top-14 tab:top-10 bottom-10 left-6 right-6 sm:top-12 sm:bottom-12 sm:left-8 sm:right-8 md:top-16 md:bottom-16 md:left-12 md:right-12 overflow-y-auto z-10">
         <motion.div
           className="w-full min-h-full flex flex-col px-4 sm:px-6 py-6 sm:py-8"
           variants={containerVariants}
@@ -2171,7 +2271,7 @@ const SectionsSlide = ({ title, subtitle, sections, active }) => {
         >
           <motion.h2
             variants={itemVariants}
-            className="text-3xl sm:text-4xl md:text-6xl text-center mb-2"
+            className="text-4xl sm:text-4xl md:text-6xl text-center mb-2"
             style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
           >
             {cleanHeadingText(title)}
@@ -2179,7 +2279,7 @@ const SectionsSlide = ({ title, subtitle, sections, active }) => {
           {subtitle && (
             <motion.p
               variants={itemVariants}
-              className="text-lg sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+              className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
               style={{ color: COLORS.textMuted }}
             >
               {subtitle}
@@ -2220,6 +2320,105 @@ const SectionsSlide = ({ title, subtitle, sections, active }) => {
     </div>
   );
 };
+
+// ============================================
+// MOBILE TEXT SECTION COMPONENT
+// ============================================
+/**
+ * MobileTextSection - A flowing text section for mobile layouts.
+ *
+ * On desktop the report uses TextContentSlide which constrains content to a
+ * fixed 100vh "slide". On mobile (< 650px) we don't want that constraint —
+ * content should flow naturally so users can scroll through it like a normal
+ * web page. This component renders a title, optional subtitle, and the full
+ * text content with a subtle divider line at the top for visual separation.
+ */
+const MobileTextSection = ({ title, subtitle, content }) => (
+  <div className="px-5 py-8 border-t border-[rgba(113,0,0,0.1)]">
+    {title && (
+      <h2
+        className="text-3xl text-center mb-1"
+        style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
+      >
+        {cleanHeadingText(title)}
+      </h2>
+    )}
+    {subtitle && (
+      <p
+        className="text-sm mb-4 text-center arca-heavy uppercase"
+        style={{ color: COLORS.textMuted }}
+      >
+        {subtitle}
+      </p>
+    )}
+    <div className="w-full max-w-3xl mx-auto">
+      {typeof content === 'string' ? (
+        <p
+          className="text-base leading-relaxed whitespace-pre-wrap opensans-regular"
+          style={{ color: COLORS.textBrown }}
+        >
+          {parseMarkdownBold(content)}
+        </p>
+      ) : (
+        content
+      )}
+    </div>
+  </div>
+);
+
+// ============================================
+// MOBILE SECTIONS SECTION COMPONENT
+// ============================================
+/**
+ * MobileSectionsSection - Renders numbered/titled sections in a flowing layout
+ * for mobile. Same idea as MobileTextSection but for content that has been
+ * parsed into an array of {title, content} objects (like Detailed Explanation
+ * or Recommendations that have sub-sections).
+ */
+const MobileSectionsSection = ({ title, subtitle, sections }) => (
+  <div className="px-5 py-8 border-t border-[rgba(113,0,0,0.1)]">
+    {title && (
+      <h2
+        className="text-3xl text-center mb-1"
+        style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
+      >
+        {cleanHeadingText(title)}
+      </h2>
+    )}
+    {subtitle && (
+      <p
+        className="text-sm mb-4 text-center arca-heavy uppercase"
+        style={{ color: COLORS.textMuted }}
+      >
+        {subtitle}
+      </p>
+    )}
+    <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
+      {sections.map((section, idx) => (
+        <div
+          key={idx}
+          className="p-4 rounded-lg"
+          style={{ backgroundColor: 'rgba(113, 0, 0, 0.05)' }}
+        >
+          {section.title && (
+            <h3
+              className="text-lg font-semibold mb-2 font-poppins font-medium"
+              style={{ color: COLORS.primary }}
+            >
+              {section.title}
+            </h3>
+          )}
+          <p
+            className="text-base leading-relaxed whitespace-pre-wrap opensans-regular"
+            style={{ color: COLORS.textBrown }}
+          >
+            {parseMarkdownBold(section.content)}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 // ============================================
 // LOADING SLIDE COMPONENT
@@ -2293,6 +2492,13 @@ const AyurvedaReport = () => {
   const [loadError, setLoadError] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Mobile detection - when true, we show a single scrollable page instead of slides
+  const isMobile = useIsMobile(650);
+
+  // Ref for resetting scroll position when changing mobile pages
+  const mobileScrollRef = useRef(null);
 
   // Navigation lock
   const isLockedRef = useRef(false);
@@ -2336,6 +2542,8 @@ const AyurvedaReport = () => {
     // Slide 0: Intro/Cover
     slides.push({
       id: 'intro',
+      topic: 'Introduction',
+      title: 'Introduction',
       render: (active) => <IntroSlide active={active} />,
     });
 
@@ -2343,6 +2551,8 @@ const AyurvedaReport = () => {
     if (constitution?.prakriti) {
       slides.push({
         id: 'prakriti',
+        topic: 'Prakriti',
+        title: 'Prakriti',
         render: (active) => <PrakritiSlide prakriti={constitution.prakriti} active={active} />,
       });
     }
@@ -2351,6 +2561,8 @@ const AyurvedaReport = () => {
     if (constitution?.vikriti) {
       slides.push({
         id: 'vikriti',
+        topic: 'Vikriti',
+        title: 'Vikriti',
         render: (active) => <VikritiSlide vikriti={constitution.vikriti} active={active} />,
       });
     }
@@ -2359,6 +2571,8 @@ const AyurvedaReport = () => {
     if (dosha_changes) {
       slides.push({
         id: 'dosha-changes',
+        topic: 'Dosha Changes',
+        title: 'Dosha Changes',
         render: (active) => (
           <DoshaChangesSlide
             constitution={constitution}
@@ -2373,6 +2587,8 @@ const AyurvedaReport = () => {
     if (health_assessment) {
       slides.push({
         id: 'health-score',
+        topic: 'Health Score',
+        title: 'Health Score',
         render: (active) => <HealthScoreSlide healthAssessment={health_assessment} active={active} />,
       });
     }
@@ -2503,7 +2719,247 @@ const AyurvedaReport = () => {
     }
   }
 
-  const totalSlides = slides.length;
+  // Auto-close mobile nav when the slide changes (user swiped or used prev/next)
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [currentSlide]);
+
+  // ── Mobile sections ──
+  // On mobile we skip the expensive text-chunking (measureTextIntoSlideChunks)
+  // because there are no 100vh slides to fill. Instead we store the raw text
+  // and render it in a flowing layout via MobileTextSection / MobileSectionsSection.
+  const mobileSections = [];
+
+  if (reportData && isMobile) {
+    const { constitution, dosha_changes, health_assessment } = reportData;
+    const interpretation = health_assessment?.interpretation || {};
+
+    // Intro
+    mobileSections.push({
+      id: 'intro',
+      type: 'intro',
+      topic: 'Introduction',
+    });
+
+    // Prakriti chart
+    if (constitution?.prakriti) {
+      mobileSections.push({
+        id: 'prakriti',
+        type: 'prakriti',
+        topic: 'Prakriti',
+        data: constitution.prakriti,
+      });
+    }
+
+    // Vikriti chart
+    if (constitution?.vikriti) {
+      mobileSections.push({
+        id: 'vikriti',
+        type: 'vikriti',
+        topic: 'Vikriti',
+        data: constitution.vikriti,
+      });
+    }
+
+    // Dosha changes
+    if (dosha_changes) {
+      mobileSections.push({
+        id: 'dosha-changes',
+        type: 'dosha-changes',
+        topic: 'Dosha Changes',
+        data: { constitution, doshaChanges: dosha_changes },
+      });
+    }
+
+    // Health score
+    if (health_assessment) {
+      mobileSections.push({
+        id: 'health-score',
+        type: 'health-score',
+        topic: 'Health Score',
+        data: health_assessment,
+      });
+    }
+
+    // Prakriti Assessment text — raw, no chunking
+    if (interpretation.prakriti_assessment) {
+      const cleaned = stripParagraphMarkers(interpretation.prakriti_assessment);
+      const headingSections = parseSectionsByHeading(cleaned);
+
+      if (headingSections.length > 0) {
+        headingSections.forEach((section, idx) => {
+          mobileSections.push({
+            id: `prakriti-assessment-${idx}`,
+            type: 'text',
+            topic: 'Prakriti Assessment',
+            title: 'Prakriti Assessment',
+            subtitle: section.heading,
+            content: section.content,
+          });
+        });
+      } else {
+        mobileSections.push({
+          id: 'prakriti-assessment',
+          type: 'text',
+          topic: 'Prakriti Assessment',
+          title: 'Prakriti Assessment',
+          subtitle: 'Understanding your birth constitution',
+          content: cleaned,
+        });
+      }
+    }
+
+    // Comprehensive Summary — raw, no chunking
+    if (interpretation.comprehensive_summary) {
+      const cleaned = stripParagraphMarkers(interpretation.comprehensive_summary);
+      const headingSections = parseSectionsByHeading(cleaned);
+
+      if (headingSections.length > 0) {
+        headingSections.forEach((section, idx) => {
+          mobileSections.push({
+            id: `comprehensive-summary-${idx}`,
+            type: 'text',
+            topic: 'Comprehensive Summary',
+            title: 'Comprehensive Summary',
+            subtitle: section.heading,
+            content: section.content,
+          });
+        });
+      } else {
+        mobileSections.push({
+          id: 'comprehensive-summary',
+          type: 'text',
+          topic: 'Comprehensive Summary',
+          title: 'Comprehensive Summary',
+          subtitle: 'An overview of your health profile',
+          content: cleaned,
+        });
+      }
+    }
+
+    // Detailed Explanation — raw, no chunking
+    if (interpretation.detailed_explanation) {
+      const cleaned = stripParagraphMarkers(interpretation.detailed_explanation);
+      const headingSections = parseSectionsByHeading(cleaned);
+      const numberedSections = parseSections(cleaned);
+
+      if (numberedSections.length > 0) {
+        mobileSections.push({
+          id: 'detailed-explanation',
+          type: 'sections',
+          topic: 'Detailed Explanation',
+          title: 'Detailed Explanation',
+          subtitle: 'In-depth analysis of your constitution',
+          sections: numberedSections,
+        });
+      } else if (headingSections.length > 0) {
+        headingSections.forEach((section, idx) => {
+          mobileSections.push({
+            id: `detailed-explanation-${idx}`,
+            type: 'text',
+            topic: 'Detailed Explanation',
+            title: 'Detailed Explanation',
+            subtitle: section.heading,
+            content: section.content,
+          });
+        });
+      } else {
+        mobileSections.push({
+          id: 'detailed-explanation',
+          type: 'text',
+          topic: 'Detailed Explanation',
+          title: 'Detailed Explanation',
+          subtitle: 'In-depth analysis of your constitution',
+          content: cleaned,
+        });
+      }
+    }
+
+    // Recommendations — raw, no chunking
+    if (interpretation.recommendations) {
+      const cleaned = stripParagraphMarkers(interpretation.recommendations);
+      const headingSections = parseSectionsByHeading(cleaned);
+      const numberedSections = parseSections(cleaned);
+
+      if (numberedSections.length > 0) {
+        mobileSections.push({
+          id: 'recommendations',
+          type: 'sections',
+          topic: 'Recommendations',
+          title: 'Recommendations',
+          subtitle: 'Personalized guidance for your wellness',
+          sections: numberedSections,
+        });
+      } else if (headingSections.length > 0) {
+        headingSections.forEach((section, idx) => {
+          mobileSections.push({
+            id: `recommendations-${idx}`,
+            type: 'text',
+            topic: 'Recommendations',
+            title: 'Recommendations',
+            subtitle: section.heading,
+            content: section.content,
+          });
+        });
+      } else {
+        mobileSections.push({
+          id: 'recommendations',
+          type: 'text',
+          topic: 'Recommendations',
+          title: 'Recommendations',
+          subtitle: 'Personalized guidance for your wellness',
+          content: cleaned,
+        });
+      }
+    }
+  }
+
+  // totalSlides works for both desktop slides and mobile sections
+  const totalSlides = isMobile ? mobileSections.length : slides.length;
+
+  // ── Topic navigation data ──
+  // Groups consecutive slides/sections by their `topic` field so the nav can show
+  // a compact list of topic names (e.g. "Prakriti Assessment" covers 4 entries).
+  // On mobile, we use mobileSections; on desktop, we use slides.
+  const topicGroups = useMemo(() => {
+    const source = isMobile ? mobileSections : slides;
+    const groups = [];
+    for (let i = 0; i < source.length; i++) {
+      const topic = source[i].topic || 'Unknown';
+      const last = groups[groups.length - 1];
+      if (last && last.topic === topic) {
+        last.slideCount++;
+      } else {
+        groups.push({ topic, firstSlideIndex: i, slideCount: 1 });
+      }
+    }
+    return groups;
+  }, [isMobile ? mobileSections.length : slides.length, reportData, isMobile]);
+
+  // Find which topic group the current slide/section belongs to
+  const currentTopic = useMemo(() => {
+    for (let i = topicGroups.length - 1; i >= 0; i--) {
+      if (currentSlide >= topicGroups[i].firstSlideIndex) {
+        return topicGroups[i].topic;
+      }
+    }
+    return topicGroups[0]?.topic || '';
+  }, [topicGroups, currentSlide]);
+
+  // Safety clamp: if totalSlides shrinks (e.g. rotating from desktop→mobile),
+  // ensure currentSlide doesn't go out of bounds
+  useEffect(() => {
+    if (totalSlides > 0 && currentSlide >= totalSlides) {
+      setCurrentSlide(totalSlides - 1);
+    }
+  }, [totalSlides]);
+
+  // When the mobile page changes, reset scroll to the top of the new page
+  useEffect(() => {
+    if (isMobile && mobileScrollRef.current) {
+      mobileScrollRef.current.scrollTop = 0;
+    }
+  }, [currentSlide, isMobile]);
 
   // Navigation functions
   const goToSlide = (index) => {
@@ -2523,8 +2979,9 @@ const AyurvedaReport = () => {
     goToSlide(currentSlide + direction);
   };
 
-  // Wheel handler
+  // Wheel handler — disabled on mobile so native scrolling works
   useEffect(() => {
+    if (isMobile) return;
     const container = containerRef.current;
     if (!container || totalSlides === 0) return;
 
@@ -2550,10 +3007,11 @@ const AyurvedaReport = () => {
 
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [currentSlide, totalSlides]);
+  }, [currentSlide, totalSlides, isMobile]);
 
-  // Touch handlers
+  // Touch handlers — disabled on mobile so native scrolling works
   useEffect(() => {
+    if (isMobile) return;
     const container = containerRef.current;
     if (!container || totalSlides === 0) return;
 
@@ -2578,10 +3036,11 @@ const AyurvedaReport = () => {
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [currentSlide, totalSlides]);
+  }, [currentSlide, totalSlides, isMobile]);
 
-  // Keyboard handler
+  // Keyboard handler — disabled on mobile so native scrolling works
   useEffect(() => {
+    if (isMobile) return;
     if (totalSlides === 0) return;
 
     const handleKeyDown = (e) => {
@@ -2598,7 +3057,7 @@ const AyurvedaReport = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSlide, totalSlides]);
+  }, [currentSlide, totalSlides, isMobile]);
 
   // Render loading state
   if (isLoading) {
@@ -2618,7 +3077,146 @@ const AyurvedaReport = () => {
     );
   }
 
-  // Render main report
+  // ── Helper: render a single mobile section by type ──
+  const renderMobileSection = (section) => {
+    switch (section.type) {
+      case 'intro':
+        return <IntroSlide active={true} isMobile={true} />;
+      case 'prakriti':
+        return <PrakritiSlide prakriti={section.data} active={true} isMobile={true} />;
+      case 'vikriti':
+        return <VikritiSlide vikriti={section.data} active={true} isMobile={true} />;
+      case 'dosha-changes':
+        return (
+          <DoshaChangesSlide
+            constitution={section.data.constitution}
+            doshaChanges={section.data.doshaChanges}
+            active={true}
+            isMobile={true}
+          />
+        );
+      case 'health-score':
+        return <HealthScoreSlide healthAssessment={section.data} active={true} isMobile={true} />;
+      case 'text':
+        return (
+          <MobileTextSection
+            title={section.title}
+            subtitle={section.subtitle}
+            content={section.content}
+          />
+        );
+      case 'sections':
+        return (
+          <MobileSectionsSection
+            title={section.title}
+            subtitle={section.subtitle}
+            sections={section.sections}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // ── Mobile layout (paged — one section per page) ──
+  // Each section fills the screen. User scrolls within a section if it's long,
+  // and uses Prev/Next buttons to navigate between sections.
+  if (isMobile && mobileSections.length > 0) {
+    const currentMobileSection = mobileSections[currentSlide] || mobileSections[0];
+
+    return (
+      <div
+        ref={containerRef}
+        className="h-[100dvh] w-full flex flex-col relative"
+        style={{ fontSynthesis: 'style' }}
+      >
+        {/* Fixed background layer — iOS doesn't support backgroundAttachment:fixed,
+            so we use a fixed-position div behind the content instead */}
+        <div
+          className="fixed inset-0 -z-10"
+          style={{
+            backgroundImage: `url(${bgImg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+
+        {/* Topic nav dropdown — fixed at top */}
+        <MobileTopicNav
+          topicGroups={topicGroups}
+          currentTopic={currentTopic}
+          isOpen={mobileNavOpen}
+          onToggle={() => setMobileNavOpen(prev => !prev)}
+          onNavigate={(idx) => { goToSlide(idx); setMobileNavOpen(false); }}
+        />
+
+        {/* Scrollable content area — shows only the current section */}
+        <div
+          ref={mobileScrollRef}
+          className="flex-1 overflow-y-auto pt-[45px] flex flex-col"
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentMobileSection.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="min-h-full grow"
+            >
+              {renderMobileSection(currentMobileSection)}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Bottom navigation bar — Prev / page counter / Next */}
+        <div
+          className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+          style={{
+            backgroundColor: 'rgba(255, 248, 240, 0.92)',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(113, 0, 0, 0.1)',
+          }}
+        >
+          <button
+            onClick={() => move(-1)}
+            disabled={currentSlide === 0}
+            className="flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium transition-opacity"
+            style={{
+              color: COLORS.primary,
+              opacity: currentSlide === 0 ? 0.35 : 1,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Prev
+          </button>
+
+          <span className="text-sm font-medium" style={{ color: COLORS.primary }}>
+            {currentSlide + 1} / {totalSlides}
+          </span>
+
+          <button
+            onClick={() => move(1)}
+            disabled={currentSlide === totalSlides - 1}
+            className="flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium transition-opacity"
+            style={{
+              color: COLORS.primary,
+              opacity: currentSlide === totalSlides - 1 ? 0.35 : 1,
+            }}
+          >
+            Next
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 6 15 12 9 18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Render main report (desktop — PPT slide mode)
   return (
     <div
       ref={containerRef}
@@ -2639,9 +3237,21 @@ const AyurvedaReport = () => {
         ))}
       </AnimatePresence>
 
-      {/* Progress dots */}
+      {/* Mobile topic nav — visible only below 650px */}
+      {totalSlides > 0 && (
+        <MobileTopicNav
+          topicGroups={topicGroups}
+          currentTopic={currentTopic}
+          isOpen={mobileNavOpen}
+          onToggle={() => setMobileNavOpen(prev => !prev)}
+          onNavigate={(idx) => { goToSlide(idx); setMobileNavOpen(false); }}
+        />
+      )}
+
+      {/* Progress dots — hidden on mobile, visible at 650px+ */}
       {totalSlides > 0 && (
         <motion.div
+          className="hidden tab:block"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
@@ -2660,7 +3270,7 @@ const AyurvedaReport = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium"
+          className="hidden tab:flex fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium"
           style={{
             backgroundColor: 'rgba(113, 0, 0, 0.15)',
             backdropFilter: 'blur(8px)',
@@ -2678,6 +3288,52 @@ const AyurvedaReport = () => {
           {' / '}
           {totalSlides}
         </motion.div>
+      )}
+
+      {/* Mobile navigation buttons - visible only below 650px */}
+      {totalSlides > 0 && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 tab:hidden"
+          style={{
+            backgroundColor: 'rgba(255, 248, 240, 0.92)',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(113, 0, 0, 0.1)',
+          }}
+        >
+          <button
+            onClick={() => move(-1)}
+            disabled={currentSlide === 0}
+            className="flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium transition-opacity"
+            style={{
+              color: COLORS.primary,
+              opacity: currentSlide === 0 ? 0.35 : 1,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Prev
+          </button>
+
+          <span className="text-sm font-medium" style={{ color: COLORS.primary }}>
+            {currentSlide + 1} / {totalSlides}
+          </span>
+
+          <button
+            onClick={() => move(1)}
+            disabled={currentSlide === totalSlides - 1}
+            className="flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium transition-opacity"
+            style={{
+              color: COLORS.primary,
+              opacity: currentSlide === totalSlides - 1 ? 0.35 : 1,
+            }}
+          >
+            Next
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 6 15 12 9 18" />
+            </svg>
+          </button>
+        </div>
       )}
     </div>
   );
