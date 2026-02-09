@@ -4,7 +4,10 @@
       "Bash(copy \"C:/Desktop/Orbuculum_FE/src/components/pages/AnalyticForm/AnalyticFeedbackForm.jsx\" \"C:/Desktop/ClevoAnalyticsForm/src/components/pages/AnalyticForm/\")",
       "Bash(dir /s /b)",
       "Bash(node -e:*)",
-      "Bash(dir /s /b C:Desktop*report*)"
+      "Bash(dir /s /b C:Desktop*report*)",
+      "WebFetch(domain:d2zcrs37ownl9k.cloudfront.net)",
+      "WebFetch(domain:www.cufonfonts.com)",
+      "WebFetch(domain:font.download)"
     ],
     "deny": [],
     "ask": []

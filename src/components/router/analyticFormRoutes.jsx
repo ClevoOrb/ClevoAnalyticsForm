@@ -16,6 +16,7 @@ import AnalyticFeedbackFormPost from "../pages/AnalyticForm/AnalyticFeedbackForm
 import AnalyticFormsList from "../pages/AnalyticForm/AnalyticFormsList";
 import ExcelUpload from "../pages/AnalyticForm/ExcelUpload";
 import AnalyticsReport from "../pages/AnalyticForm/AnalyticsReport";
+import AyurvedaReport from "../pages/AnalyticForm/AyurvedaReport";
 import AccessCodeGuard from "../common/AccessCodeGuard";
 
 const analyticFormRoutes = [
@@ -57,6 +58,12 @@ const analyticFormRoutes = [
   {
     path: "/report/:orgName/:formName/:clevoCode",
     element: <AnalyticsReport />,
+  },
+  // Ayurveda Report route - displays Ayurvedic constitution report
+  // URL format: /ayurveda-report/orgname/formname/clevoCode
+  {
+    path: "/ayurveda-report/:orgName/:formName/:clevoCode",
+    element: <AyurvedaReport />,
   },
 ];
 

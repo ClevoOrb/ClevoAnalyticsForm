@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jaini&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -142,6 +144,12 @@
 }
 
 @font-face {
+  font-family: 'ArcaMajora3-Heavy';
+  src: url('/assets/ArcaMajora3-Heavy.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'OpenSans-Regular';
   src: local('OpenSans-Regular'), url("https://d2zcrs37ownl9k.cloudfront.net/Fonts/OpenSans-Regular.woff") format('woff');
   font-display: swap;
@@ -159,9 +167,19 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'SAMAN';
+  src: url('./components/assets/SAMAN___.ttf') format('truetype');
+  font-display: swap;
+}
+
 /* Font Utility Classes - Matching Orbuculum_FE */
 .arca {
   font-family: 'ArcaMajora3-Bold', sans-serif;
+}
+
+.arca-heavy {
+  font-family: 'ArcaMajora3-Heavy', sans-serif;
 }
 
 .opensans-regular {
@@ -192,7 +210,11 @@
   font-family: "Montserrat", sans-serif;
 }
 
-/* Headings use ArcaMajora3-Bold */
+.saman {
+  font-family: 'SAMAN', serif;
+}
+
+/* Headings use Jaini */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'ArcaMajora3-Bold', sans-serif;
   color: #2c2c2c;

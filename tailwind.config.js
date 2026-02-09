@@ -63,6 +63,8 @@ module.exports = {
         quick: ["Quicksand", "sans"],
         inter: ["Inter", "sans-serif"],
         manrope: ["Manrope", "sans-serif"],
+        saman: ["SAMAN", "serif"],
+        jaini: ["Jaini", "sans-serif"],
       },
       screens: {
         small:"300px",
