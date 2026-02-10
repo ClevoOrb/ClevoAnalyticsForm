@@ -113,16 +113,20 @@ const useIsMobile = (breakpoint = 650) => {
 // COLORS - Ayurveda Theme
 // ============================================
 const COLORS = {
-  primary: '#710000',      // Deep red
-  vata: '#034a73',         // Blue
-  pitta: '#9a2a1b',        // Red/maroon
-  kapha: '#32563c',        // Green
-  textBrown: '#8B4513',    // Brown for body text
+  primary: '#243026',        // Dark green (headings/titles)
+  vata: '#034a73',           // Blue
+  pitta: '#9a2a1b',          // Red/maroon
+  kapha: '#32563c',          // Green
+  textBrown: '#243026',      // Dark green (body text)
   textLight: '#FFFFFF',
-  textMuted: 'rgba(139, 69, 19, 0.7)',
-  dotInactive: 'rgba(113, 0, 0, 0.4)',
+  textMuted: '#768b3c',      // Olive green (subtitles/labels)
+  dotInactive: 'rgba(36, 48, 38, 0.4)',  // Primary at 40% opacity
   accent: '#D4A574',
 };
+
+// Mobile heading/subheading sizes — edit these two lines to change all mobile report headings at once
+const MOBILE_HEADING = 'text-5xl mb-4';
+const MOBILE_SUBHEADING = 'text-lg mb-4';
 
 // Dosha colors mapping
 const DOSHA_COLORS = {
@@ -868,9 +872,9 @@ const buildTextSlides = (text, baseId, title, subtitle) => {
  * Get score interpretation text and color
  */
 const getScoreInterpretation = (score) => {
-  if (score >= 80) return { text: 'Excellent', color: '#22C55E' };
+  if (score >= 80) return { text: 'Excellent', color: '#243026' };
   if (score >= 60) return { text: 'Good', color: '#3B82F6' };
-  if (score >= 40) return { text: 'Moderate', color: '#F59E0B' };
+  if (score >= 40) return { text: 'Moderate', color: '#ee9b00' };
   return { text: 'Needs Attention', color: '#EF4444' };
 };
 
@@ -878,10 +882,10 @@ const getScoreInterpretation = (score) => {
  * Helper function for markdown-only parsing (bold/italic)
  * Separated from main function to allow reuse when processing inline headings
  * @param {string} text - Text that may contain markdown formatting
- * @param {number} startKeyIndex - Starting index for React keys to avoid collisions
+ * @param {object} counter - Shared counter object { current: number } for unique React keys
  * @returns {Array} - Array of text strings and JSX elements
  */
-const parseMarkdownOnly = (text, startKeyIndex = 0) => {
+const parseMarkdownOnly = (text, counter = { current: 0 }) => {
   if (!text) return [];
 
   // Step 1: Strip all asterisks (existing behavior)
@@ -898,7 +902,6 @@ const parseMarkdownOnly = (text, startKeyIndex = 0) => {
 
   const result = [];
   let lastIndex = 0;
-  let keyIndex = startKeyIndex;
   let match;
 
   while ((match = regex.exec(capitalized)) !== null) {
@@ -912,19 +915,19 @@ const parseMarkdownOnly = (text, startKeyIndex = 0) => {
       const inner = match[1].slice(1, -1); // remove ( and )
       const capitalizedInner = inner.charAt(0).toUpperCase() + inner.slice(1);
       result.push(
-        <strong key={`fmt-${keyIndex++}`} className="opensans-bold" style={{ fontStyle: 'normal' }}>{`(${capitalizedInner})`}</strong>
+        <strong key={`fmt-${counter.current++}`} className="opensans-bold" style={{ fontStyle: 'normal' }}>{`(${capitalizedInner})`}</strong>
       );
     } else if (match[2]) {
       // Percentage like 45% → bold
       result.push(
-        <strong key={`fmt-${keyIndex++}`} className="opensans-bold" style={{ fontStyle: 'normal' }}>
+        <strong key={`fmt-${counter.current++}`} className="opensans-bold" style={{ fontStyle: 'normal' }}>
           {match[2]}
         </strong>
       );
     } else if (match[3]) {
       // Score like "75 health score" or "80 score" → bold
       result.push(
-        <strong key={`fmt-${keyIndex++}`} className="opensans-bold" style={{ fontStyle: 'normal' }}>
+        <strong key={`fmt-${counter.current++}`} className="opensans-bold" style={{ fontStyle: 'normal' }}>
           {match[3]}
         </strong>
       );
@@ -936,7 +939,7 @@ const parseMarkdownOnly = (text, startKeyIndex = 0) => {
       const openQuote = capitalized.charAt(match.index);
       const closeQuote = capitalized.charAt(match.index + match[0].length - 1);
       result.push(
-        <em key={`fmt-${keyIndex++}`} style={{ fontStyle: 'italic' }}>{openQuote}{capitalizedInner}{closeQuote}</em>
+        <em key={`fmt-${counter.current++}`} style={{ fontStyle: 'italic' }}>{openQuote}{capitalizedInner}{closeQuote}</em>
       );
     } else if (match[5]) {
       // Question word → only bold if it starts a sentence
@@ -945,7 +948,7 @@ const parseMarkdownOnly = (text, startKeyIndex = 0) => {
 
       if (isStartOfSentence) {
         result.push(
-          <strong key={`fmt-${keyIndex++}`}>{match[5]}</strong>
+          <strong key={`fmt-${counter.current++}`}>{match[5]}</strong>
         );
       } else {
         // Mid-sentence question word → render as plain text, no bold
@@ -972,10 +975,10 @@ const parseMarkdownOnly = (text, startKeyIndex = 0) => {
  * JSX elements (already-formatted bold, italic, headings, etc.) are skipped.
  *
  * @param {Array} parts - Array of strings and JSX elements from parseMarkdownOnly
- * @param {number} startKey - Starting key index for React keys
+ * @param {object} counter - Shared counter object { current: number } for unique React keys
  * @returns {Array} - New array with Ayurvedic references wrapped in styled spans
  */
-const highlightAyurvedicReferences = (parts, startKey = 0) => {
+const highlightAyurvedicReferences = (parts, counter = { current: 0 }) => {
   // Known Ayurvedic classical text names
   const textNames = [
     'Charaka', 'Caraka', 'Sushruta', 'Susruta', 'Ashtanga', 'Astanga',
@@ -1004,7 +1007,6 @@ const highlightAyurvedicReferences = (parts, startKey = 0) => {
     'g'
   );
 
-  let keyIdx = startKey;
   const result = [];
 
   for (const part of parts) {
@@ -1026,7 +1028,7 @@ const highlightAyurvedicReferences = (parts, startKey = 0) => {
           while ((m = regex.exec(childText)) !== null) {
             if (m.index > lastIdx) newChildren.push(childText.slice(lastIdx, m.index));
             newChildren.push(
-              <span key={`ayur-${keyIdx++}`} style={{ fontStyle: 'italic', textDecoration: 'underline', fontSize: '0.9em' }}>
+              <span key={`ayur-${counter.current++}`} style={{ fontStyle: 'italic', textDecoration: 'underline', fontSize: '0.9em' }}>
                 {m[1]}
               </span>
             );
@@ -1053,7 +1055,7 @@ const highlightAyurvedicReferences = (parts, startKey = 0) => {
       }
       // Wrap the matched reference in italic + underline
       result.push(
-        <span key={`ayur-${keyIdx++}`} style={{ fontStyle: 'italic', textDecoration: 'underline', fontSize: '0.9em' }}>
+        <span key={`ayur-${counter.current++}`} style={{ fontStyle: 'italic', textDecoration: 'underline', fontSize: '0.9em' }}>
           {m[1]}
         </span>
       );
@@ -1091,7 +1093,7 @@ const parseMarkdownBold = (text) => {
 
   // Process text to extract inline headings and markdown formatting
   const parts = [];
-  let keyIndex = 0;
+  const counter = { current: 0 };
 
   // Split by inline headings pattern
   // Two alternatives (tried left-to-right):
@@ -1110,14 +1112,13 @@ const parseMarkdownBold = (text) => {
     // Add text before this heading (with markdown parsing)
     if (match.index > lastIndex) {
       const beforeText = cleanedText.slice(lastIndex, match.index);
-      parts.push(...parseMarkdownOnly(beforeText, keyIndex));
-      keyIndex += 10; // Increment by 10 to avoid key collisions
+      parts.push(...parseMarkdownOnly(beforeText, counter));
     }
 
     // Add the heading as a styled element
     // Uses the primary color (#710000) for visibility
     parts.push(
-      <strong key={keyIndex++} className="text-[#710000] font-semibold">
+      <strong key={`fmt-${counter.current++}`} className="text-[#243026] font-semibold">
         {match[1]}:
       </strong>,
       ' ' // Add space after heading
@@ -1129,15 +1130,15 @@ const parseMarkdownBold = (text) => {
   // Add remaining text after last heading (with markdown parsing)
   if (lastIndex < cleanedText.length) {
     const remainingText = cleanedText.slice(lastIndex);
-    parts.push(...parseMarkdownOnly(remainingText, keyIndex));
+    parts.push(...parseMarkdownOnly(remainingText, counter));
   }
 
   // If no headings found, just do markdown parsing
   if (parts.length === 0) {
-    return highlightAyurvedicReferences(parseMarkdownOnly(cleanedText, 0), 500);
+    return highlightAyurvedicReferences(parseMarkdownOnly(cleanedText, counter), counter);
   }
 
-  return highlightAyurvedicReferences(parts, keyIndex + 100);
+  return highlightAyurvedicReferences(parts, counter);
 };
 
 // ============================================
@@ -1198,12 +1199,12 @@ const MobileTopicNav = ({ topicGroups, currentTopic, isOpen, onToggle, onNavigat
         style={{
           backgroundColor: 'rgba(255, 248, 240, 0.92)',
           backdropFilter: 'blur(8px)',
-          borderBottom: '1px solid rgba(113, 0, 0, 0.1)',
+          borderBottom: '1px solid rgb(116,198,157,0.1)',
           color: COLORS.primary,
         }}
       >
-        <img src={logo} alt="Sections" className="w-[30%] justify-self-start" />
-        <div className="truncate font-jaini justify-self-center text-center text-3xl" style={{ color: COLORS.primary }}>
+        <img src={logo} alt="Sections" className="w-[40%] tabxs:w-[30%] justify-self-start" />
+        <div className=" font-jaini justify-self-center text-center text-[1.65rem] h-auto whitespace-nowrap" style={{ color: COLORS.primary }}>
           Ayurveda Report
         </div>
         <div className='flex items-center gap-x-1 justify-self-end'>
@@ -1238,7 +1239,7 @@ const MobileTopicNav = ({ topicGroups, currentTopic, isOpen, onToggle, onNavigat
             style={{
               backgroundColor: 'rgba(255, 248, 240, 0.96)',
               backdropFilter: 'blur(8px)',
-              borderBottom: '1px solid rgba(113, 0, 0, 0.1)',
+              borderBottom: '1px solid rgb(116,198,157,0.1)',
             }}
           >
             <div className="py-1">
@@ -1250,7 +1251,7 @@ const MobileTopicNav = ({ topicGroups, currentTopic, isOpen, onToggle, onNavigat
                     onClick={() => onNavigate(group.firstSlideIndex)}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors"
                     style={{
-                      backgroundColor: isActive ? 'rgba(113, 0, 0, 0.07)' : 'transparent',
+                      backgroundColor: isActive ? 'rgba(36, 48, 38, 0.07)' : 'transparent',
                     }}
                   >
                     {/* Active indicator dot */}
@@ -1402,7 +1403,7 @@ const DoshaImageBar = ({ dosha, percentage, active, delay = 0 }) => {
         {/* Percentage text - positioned at far right */}
         <motion.span
           className="absolute right-4 text-base sm:text-lg font-semibold"
-          style={{ color: '#333' }}
+          style={{ color: '#243026' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: active ? 1 : 0 }}
           transition={{ duration: 0.5, delay: (delay / 1000) + 0.5 }}
@@ -1436,11 +1437,12 @@ const DoshaPieChart = ({
   kaphaPercentage,
   active,
   size = 280,
-  chartId = 'default' // Unique ID to prevent clipPath conflicts between multiple charts
+  chartId = 'default', // Unique ID to prevent clipPath conflicts between multiple charts
+  isMobile = false
 }) => {
   // Calculate center and radius based on size
   // We need extra padding for labels, so the actual pie is smaller
-  const padding = 60; // Space for labels outside the pie
+  const padding = isMobile ? 85 : 60; // Space for labels outside the pie
   const svgSize = size + padding * 2;
   const cx = svgSize / 2;
   const cy = svgSize / 2;
@@ -1567,7 +1569,7 @@ const DoshaPieChart = ({
           // Determine text anchor based on position (left or right of center)
           const textAnchor = segment.labelX > cx ? 'start' : 'end';
           // Adjust label X position slightly based on side
-          const labelXOffset = segment.labelX > cx ? 8 : -8;
+          const labelXOffset = segment.labelX > cx ? (isMobile ? 5 : 8) : (isMobile ? -5 : -8);
 
           return (
             <motion.g
@@ -1593,7 +1595,7 @@ const DoshaPieChart = ({
                 y={segment.labelY - 14}
                 textAnchor={textAnchor}
                 fill={segment.color}
-                fontSize="22"
+                fontSize={22}
                 fontWeight="600"
                 fontFamily="ArcaMajora3-Bold"
               >
@@ -1606,7 +1608,7 @@ const DoshaPieChart = ({
                 y={segment.labelY + 16}
                 textAnchor={textAnchor}
                 fill={COLORS.textBrown}
-                fontSize="24"
+                fontSize={24}
                 fontWeight="700"
                 fontFamily="ArcaMajora3-Bold"
               >
@@ -1651,7 +1653,7 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
 
       {/* Full dosha icon - no circular cropping */}
       <motion.div
-        className="flex items-center justify-center aspect-square"
+        className="macxs:flex items-center justify-center aspect-square hidden "
         initial={{ scale: 0.8 }}
         animate={{ scale: active ? 1 : 0.8 }}
         transition={{ duration: 0.5, delay: 1 }}
@@ -1659,7 +1661,7 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
         <img
           src={icon}
           alt={`${dosha} dosha icon`}
-          className="w-28 h-28 sm2:w-36 sm2:h-36 sm:w-44 sm:h-44 tab:w-52 tab:h-52 md:w-64 md:h-64 object-contain"
+          className="w-28 h-28 sm2:w-36 sm2:h-36 sm:w-44 sm:h-44 tab:w-52 tab:h-52 mac:w-[13rem] md:w-[14rem] md:h-[14rem] object-contain"
         />
       </motion.div>
 
@@ -1676,6 +1678,18 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
       >
         {dosha}
       </motion.p>
+       <motion.div
+        className="flex items-center justify-center aspect-square macxs:hidden "
+        initial={{ scale: 0.8 }}
+        animate={{ scale: active ? 1 : 0.8 }}
+        transition={{ duration: 0.5, delay: 1 }}
+      >
+        <img
+          src={icon}
+          alt={`${dosha} dosha icon`}
+          className="w-28 h-28 sm2:w-36 sm2:h-36 sm:w-44 sm:h-44 tab:w-52 tab:h-52 mac:w-[13rem] md:w-[14rem] md:h-[14rem] object-contain"
+        />
+      </motion.div>
     </motion.div>
   );
 };
@@ -1684,20 +1698,20 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
 // DOSHA COMPARISON BAR COMPONENT
 // ============================================
 const DoshaComparisonBar = ({ label, prakritiValue, vikritiValue, change, color, active }) => {
-  const changeColor = change > 0 ? '#22C55E' : change < 0 ? '#EF4444' : COLORS.textMuted;
+  const changeColor = change > 0 ? '#226f54' : change < 0 ? '#da2c38' : COLORS.textMuted;
   const changeSign = change > 0 ? '+' : '';
 
   return (
     <div className="mb-6 mac:mb-8 xxl:mb-10 x3l:mb-12">
       <div className="flex justify-between items-center mb-2 mac:mb-3 xxl:mb-4">
         <span
-          className="text-xl mac:text-2xl xxl:text-3xl font-semibold capitalize arca"
+          className="text-[1.05rem] mac:text-2xl xxl:text-3xl font-semibold capitalize arca"
           style={{ color: COLORS.textBrown }}
         >
           {label}
         </span>
         <span
-          className="text-base mac:text-lg xxl:text-xl font-bold"
+          className="text-[1.05rem] mac:text-lg xxl:text-xl font-bold"
           style={{ color: changeColor }}
         >
           {changeSign}{change.toFixed(2)}%
@@ -1706,7 +1720,7 @@ const DoshaComparisonBar = ({ label, prakritiValue, vikritiValue, change, color,
       <div className="flex gap-2 mac:gap-3 xxl:gap-4 x3l:gap-6">
         {/* Prakriti bar */}
         <div className="flex-1">
-          <div className="text-base mac:text-lg xxl:text-xl mb-1 mac:mb-2 font-poppins font-medium" style={{ color: COLORS.textMuted }}>Birth</div>
+          <div className="text-sm mac:text-lg xxl:text-xl mb-1 mac:mb-2 font-poppins font-medium" style={{ color: COLORS.textMuted }}>Birth</div>
           <div
             className="h-5 mac:h-6 xxl:h-7 x3l:h-8 rounded-full overflow-hidden"
             style={{ backgroundColor: 'rgba(139, 69, 19, 0.1)' }}
@@ -1722,7 +1736,7 @@ const DoshaComparisonBar = ({ label, prakritiValue, vikritiValue, change, color,
         </div>
         {/* Vikriti bar */}
         <div className="flex-1">
-          <div className="text-base mac:text-lg xxl:text-xl mb-1 mac:mb-2 font-poppins font-medium" style={{ color: COLORS.textMuted }}>Current</div>
+          <div className="text-sm mac:text-lg xxl:text-xl mb-1 mac:mb-2 font-poppins font-medium" style={{ color: COLORS.textMuted }}>Current</div>
           <div
             className="h-5 mac:h-6 xxl:h-7 x3l:h-8 rounded-full overflow-hidden"
             style={{ backgroundColor: 'rgba(139, 69, 19, 0.1)' }}
@@ -1767,14 +1781,14 @@ const IntroSlide = ({ active, isMobile }) => (
 
       <motion.h2
         variants={itemVariants}
-        className="text-3xl sm:text-4xl md:text-[6rem] text-center sm:mb-16"
+        className="text-5xl leading-20 sm:text-[2.25rem] md:text-[6rem] mac:text-[4rem] tab:text-[3rem] text-center"
         style={{ fontFamily: 'SAMAN, serif', color: COLORS.primary }}
       >
         Welcome to
       </motion.h2>
       <motion.h2
         variants={itemVariants}
-        className="text-3xl sm:text-4xl md:text-[6rem] text-center mb-6"
+        className="text-5xl leading-20 sm:text-[2.25rem] md:text-[6rem] mac:text-[4rem] tab:text-[3rem] text-center"
         style={{ fontFamily: 'SAMAN, serif', color: COLORS.primary }}
       >
         Ayurveda Report
@@ -1782,7 +1796,7 @@ const IntroSlide = ({ active, isMobile }) => (
 
       <motion.p
         variants={itemVariants}
-        className="text-base sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center font-poppins"
+        className="text-lg sm:text-xl md:text-3xl mt-6 sm:my-6 md:my-8 text-center font-poppins"
         style={{ color: COLORS.textMuted }}
       >
         Discover your unique constitution and personalized wellness insights
@@ -1829,7 +1843,7 @@ const PrakritiSlide = ({ prakriti, active, isMobile }) => {
 
   return (
     <div
-      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(36,48,38,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
       style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
@@ -1847,21 +1861,21 @@ const PrakritiSlide = ({ prakriti, active, isMobile }) => {
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
+          className={`${MOBILE_HEADING} sm:text-4xl md:text-6xl text-center mb-1`}
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Prakriti
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className={`${MOBILE_SUBHEADING} sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase`}
           style={{ color: COLORS.textMuted }}
         >
           Your Birth Constitution
         </motion.p>
 
         {/* Two-column layout: Pie Chart on left, Dominant Dosha on right */}
-        <div className="flex flex-col tab:flex-row gap-8 tab:gap-12 md:gap-16 w-full max-w-4xl items-center justify-center">
+        <div className="flex flex-col tab800:flex-row tab800:gap-16 w-full max-w-4xl items-center justify-center">
           {/* Left Column - Dosha Pie Chart */}
           <motion.div
             variants={itemVariants}
@@ -1874,6 +1888,7 @@ const PrakritiSlide = ({ prakriti, active, isMobile }) => {
               active={active}
               size={340}
               chartId="prakriti"
+              isMobile={isMobile}
             />
           </motion.div>
 
@@ -1904,7 +1919,7 @@ const VikritiSlide = ({ vikriti, active, isMobile }) => {
 
   return (
     <div
-      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(36,48,38,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
       style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
@@ -1922,21 +1937,21 @@ const VikritiSlide = ({ vikriti, active, isMobile }) => {
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
+          className={`${MOBILE_HEADING} sm:text-4xl md:text-6xl text-center mb-1`}
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Vikriti
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className={`${MOBILE_SUBHEADING} sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase`}
           style={{ color: COLORS.textMuted }}
         >
           Your Current State
         </motion.p>
 
         {/* Two-column layout: Pie Chart on left, Dominant Dosha on right */}
-        <div className="flex flex-col tab:flex-row gap-8 tab:gap-12 md:gap-16 w-full max-w-4xl items-center justify-center">
+        <div className="flex flex-col tab:flex-row gap-2 tab:gap-12 md:gap-16 w-full max-w-4xl items-center justify-center">
           {/* Left Column - Dosha Pie Chart */}
           <motion.div
             variants={itemVariants}
@@ -1949,6 +1964,7 @@ const VikritiSlide = ({ vikriti, active, isMobile }) => {
               active={active}
               size={340}
               chartId="vikriti"
+              isMobile={isMobile}
             />
           </motion.div>
 
@@ -1980,7 +1996,7 @@ const DoshaChangesSlide = ({ constitution, doshaChanges, active, isMobile }) => 
 
   return (
     <div
-      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(36,48,38,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
       style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
@@ -1998,14 +2014,14 @@ const DoshaChangesSlide = ({ constitution, doshaChanges, active, isMobile }) => 
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
+          className={`${MOBILE_HEADING} sm:text-4xl md:text-6xl text-center mb-1`}
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Dosha Changes
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className={`${MOBILE_SUBHEADING} sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase`}
           style={{ color: COLORS.textMuted }}
         >
           How your constitution has shifted
@@ -2045,7 +2061,7 @@ const DoshaChangesSlide = ({ constitution, doshaChanges, active, isMobile }) => 
           <motion.div
             variants={itemVariants}
             className="mt-4 sm:mt-6 md:mt-8 px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-center"
-            style={{ backgroundColor: 'rgba(113, 0, 0, 0.1)' }}
+            style={{ backgroundColor: 'rgb(116,198,157,0.1)' }}
           >
             <span className="font-poppins font-medium" style={{ color: COLORS.primary, fontWeight: 600 }}>
               Dominance has shifted from your birth constitution
@@ -2068,7 +2084,7 @@ const HealthScoreSlide = ({ healthAssessment, active, isMobile }) => {
 
   return (
     <div
-      className={`relative w-full ${isMobile ? 'border-t border-[rgba(113,0,0,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
+      className={`relative w-full ${isMobile ? 'border-t border-[rgba(36,48,38,0.1)]' : 'h-full min-h-[100vh] overflow-hidden'}`}
       style={isMobile ? {} : {
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
@@ -2086,14 +2102,14 @@ const HealthScoreSlide = ({ healthAssessment, active, isMobile }) => {
       >
         <motion.h2
           variants={itemVariants}
-          className="text-3xl sm:text-4xl md:text-6xl text-center mb-1"
+          className={`${MOBILE_HEADING} sm:text-4xl md:text-6xl text-center mb-1`}
           style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
         >
           Health Score
         </motion.h2>
         <motion.p
           variants={itemVariants}
-          className="text-sm sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase"
+          className={`${MOBILE_SUBHEADING} sm:text-xl md:text-3xl mb-4 sm:my-6 md:my-8 text-center arca-heavy uppercase`}
           style={{ color: COLORS.textMuted }}
         >
           Your Overall Wellness
@@ -2102,7 +2118,7 @@ const HealthScoreSlide = ({ healthAssessment, active, isMobile }) => {
         {/* Large animated score */}
         <motion.div
           variants={itemVariants}
-          className="relative"
+          className="relative mt-8 sm:mt-2"
         >
           <div
             className="text-6xl sm2:text-7xl sm:text-8xl mac:text-9xl font-bold"
@@ -2295,7 +2311,7 @@ const SectionsSlide = ({ title, subtitle, sections, active }) => {
                 <div
                   key={idx}
                   className="p-4 rounded-lg"
-                  style={{ backgroundColor: 'rgba(113, 0, 0, 0.05)' }}
+                  style={{ backgroundColor: 'rgba(36, 48, 38, 0.05)' }}
                 >
                   {section.title && (
                     <h3
@@ -2334,10 +2350,10 @@ const SectionsSlide = ({ title, subtitle, sections, active }) => {
  * text content with a subtle divider line at the top for visual separation.
  */
 const MobileTextSection = ({ title, subtitle, content }) => (
-  <div className="px-5 py-8 border-t border-[rgba(113,0,0,0.1)]">
+  <div className="px-5 py-8 border-t border-[rgba(36,48,38,0.1)]">
     {title && (
       <h2
-        className="text-3xl text-center mb-1"
+        className={`${MOBILE_HEADING} text-center mb-1`}
         style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
       >
         {cleanHeadingText(title)}
@@ -2345,7 +2361,7 @@ const MobileTextSection = ({ title, subtitle, content }) => (
     )}
     {subtitle && (
       <p
-        className="text-sm mb-4 text-center arca-heavy uppercase"
+        className={`${MOBILE_SUBHEADING} mb-4 text-center arca-heavy uppercase`}
         style={{ color: COLORS.textMuted }}
       >
         {subtitle}
@@ -2376,10 +2392,10 @@ const MobileTextSection = ({ title, subtitle, content }) => (
  * or Recommendations that have sub-sections).
  */
 const MobileSectionsSection = ({ title, subtitle, sections }) => (
-  <div className="px-5 py-8 border-t border-[rgba(113,0,0,0.1)]">
+  <div className="px-5 py-8 border-t border-[rgba(36,48,38,0.1)]">
     {title && (
       <h2
-        className="text-3xl text-center mb-1"
+        className={`${MOBILE_HEADING} text-center mb-1`}
         style={{ fontFamily: 'JAINI, serif', color: COLORS.primary }}
       >
         {cleanHeadingText(title)}
@@ -2387,7 +2403,7 @@ const MobileSectionsSection = ({ title, subtitle, sections }) => (
     )}
     {subtitle && (
       <p
-        className="text-sm mb-4 text-center arca-heavy uppercase"
+        className={`${MOBILE_SUBHEADING} mb-4 text-center arca-heavy uppercase`}
         style={{ color: COLORS.textMuted }}
       >
         {subtitle}
@@ -2398,11 +2414,11 @@ const MobileSectionsSection = ({ title, subtitle, sections }) => (
         <div
           key={idx}
           className="p-4 rounded-lg"
-          style={{ backgroundColor: 'rgba(113, 0, 0, 0.05)' }}
+          style={{ backgroundColor: 'rgba(36, 48, 38, 0.05)' }}
         >
           {section.title && (
             <h3
-              className="text-lg font-semibold mb-2 font-poppins font-medium"
+              className="text-base font-semibold mb-2 font-poppins font-medium"
               style={{ color: COLORS.primary }}
             >
               {section.title}
@@ -3062,7 +3078,7 @@ const AyurvedaReport = () => {
   // Render loading state
   if (isLoading) {
     return (
-      <div ref={containerRef} className="h-screen w-full overflow-hidden relative">
+      <div ref={containerRef} className="ayurveda-report h-screen w-full overflow-hidden relative">
         <LoadingSlide />
       </div>
     );
@@ -3071,7 +3087,7 @@ const AyurvedaReport = () => {
   // Render error state
   if (loadError || error) {
     return (
-      <div ref={containerRef} className="h-screen w-full overflow-hidden relative">
+      <div ref={containerRef} className="ayurveda-report h-screen w-full overflow-hidden relative">
         <ErrorSlide message={loadError || error} />
       </div>
     );
@@ -3127,7 +3143,7 @@ const AyurvedaReport = () => {
     return (
       <div
         ref={containerRef}
-        className="h-[100dvh] w-full flex flex-col relative"
+        className="ayurveda-report h-[100dvh] w-full flex flex-col relative"
         style={{ fontSynthesis: 'style' }}
       >
         {/* Fixed background layer — iOS doesn't support backgroundAttachment:fixed,
@@ -3173,9 +3189,9 @@ const AyurvedaReport = () => {
         <div
           className="flex items-center justify-between px-4 py-3 flex-shrink-0"
           style={{
-            backgroundColor: 'rgba(255, 248, 240, 0.92)',
+            backgroundColor: 'rgba(36, 48, 38, 0.25)',
             backdropFilter: 'blur(8px)',
-            borderTop: '1px solid rgba(113, 0, 0, 0.1)',
+            borderTop: '1px solid rgb(116,198,157,0.1)',
           }}
         >
           <button
@@ -3220,7 +3236,7 @@ const AyurvedaReport = () => {
   return (
     <div
       ref={containerRef}
-      className="h-screen w-full overflow-hidden relative"
+      className="ayurveda-report h-screen w-full overflow-hidden relative"
       style={{ fontSynthesis: 'style' }}
     >
       {/* Slides */}
@@ -3272,7 +3288,7 @@ const AyurvedaReport = () => {
           transition={{ delay: 0.3, duration: 0.5 }}
           className="hidden tab:flex fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium"
           style={{
-            backgroundColor: 'rgba(113, 0, 0, 0.15)',
+            backgroundColor: 'rgba(36, 48, 38, 0.15)',
             backdropFilter: 'blur(8px)',
             color: COLORS.primary
           }}
@@ -3295,9 +3311,9 @@ const AyurvedaReport = () => {
         <div
           className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 tab:hidden"
           style={{
-            backgroundColor: 'rgba(255, 248, 240, 0.92)',
+            backgroundColor: 'rgba(36, 48, 38, 0.1)',
             backdropFilter: 'blur(8px)',
-            borderTop: '1px solid rgba(113, 0, 0, 0.1)',
+            borderTop: '1px solid rgb(116,198,157,0.1)',
           }}
         >
           <button

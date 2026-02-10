@@ -257,29 +257,34 @@ body {
   position: relative;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
+/* Ayurveda Report Scrollbar — scoped so it doesn't affect other pages */
+.ayurveda-report ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
-::-webkit-scrollbar-track {
+.ayurveda-report ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #710000;
+.ayurveda-report ::-webkit-scrollbar-thumb {
+  background: #768b3c;
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #4a0000;
+.ayurveda-report ::-webkit-scrollbar-thumb:hover {
+  background: #5e7030;
 }
 
-/* Firefox scrollbar support */
-* {
+/* Firefox scrollbar support — scoped to Ayurveda Report */
+.ayurveda-report {
   scrollbar-width: thin;
-  scrollbar-color: #710000 transparent;
+  scrollbar-color: #768b3c transparent;
+}
+
+.ayurveda-report * {
+  scrollbar-width: thin;
+  scrollbar-color: #768b3c transparent;
 }
 
 /* Focus Styles */
