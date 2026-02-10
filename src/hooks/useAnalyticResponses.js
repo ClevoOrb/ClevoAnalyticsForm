@@ -62,7 +62,7 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     setError(null);
 
     try {
-      const { data, error: upsertError } = await supabase
+      const { error: upsertError } = await supabase
         .from('analytic_responses')
         .upsert({
           form_code: formCode,
@@ -71,9 +71,7 @@ const useAnalyticResponses = (formCode, clevoCode) => {
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'form_code,clevo_code'
-        })
-        .select()
-        .single();
+        });
 
       if (upsertError) {
         throw upsertError;

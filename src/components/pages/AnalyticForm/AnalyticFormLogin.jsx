@@ -38,6 +38,9 @@ export default function AnalyticFormLogin() {
   const [directName, setDirectName] = useState("");
   const [directMobile, setDirectMobile] = useState("");
   const [directEmail, setDirectEmail] = useState("");
+  // State for showing the "Your access code" modal after direct access login
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState("");
 
   // Supabase hook for fetching forms
   const { getForm } = useAnalyticForms();
@@ -203,9 +206,43 @@ export default function AnalyticFormLogin() {
   };
 
   /**
+   * Generate a unique 6-digit numeric code (100000–999999).
+   * Checks both `direct_access` and `analytic_responses` tables to avoid collisions
+   * with existing direct access IDs AND Clevo codes from the external API.
+   * Retries up to 10 times if a collision is found.
+   */
+  const generateUnique6DigitCode = async () => {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+
+      // Check if this code already exists in the direct_access table
+      const { data: daMatch } = await supabase
+        .from('direct_access')
+        .select('direct_access_id')
+        .eq('direct_access_id', code)
+        .maybeSingle();
+
+      if (daMatch) continue; // collision — try again
+
+      // Check if this code already exists in analytic_responses as a clevo_code
+      const { data: respMatch } = await supabase
+        .from('analytic_responses')
+        .select('clevo_code')
+        .eq('clevo_code', code)
+        .limit(1);
+
+      if (respMatch && respMatch.length > 0) continue; // collision — try again
+
+      return code; // No collision — safe to use
+    }
+    // Extremely unlikely fallback: if all 10 attempts collided, use timestamp-based ID
+    return `DA_${Date.now()}`;
+  };
+
+  /**
    * Handle Direct Access form submission
    * Checks if name + mobile combo exists, if so uses existing ID
-   * Otherwise creates new entry with unique direct_access_id
+   * Otherwise creates new entry with a unique 6-digit numeric code
    */
   const handleDirectAccessSubmit = async (event) => {
     event.preventDefault();
@@ -225,14 +262,16 @@ export default function AnalyticFormLogin() {
         .single();
 
       let directAccessId;
+      let isNewUser = false;
 
       if (existingRecord && !fetchError) {
         // Use existing direct_access_id for this name + mobile combo
         directAccessId = existingRecord.direct_access_id;
         console.log('Found existing direct access record:', directAccessId);
       } else {
-        // No existing record - create a new one
-        directAccessId = `DA_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        // No existing record — generate a unique 6-digit code
+        isNewUser = true;
+        directAccessId = await generateUnique6DigitCode();
 
         const { error: insertError } = await supabase
           .from('direct_access')
@@ -265,11 +304,13 @@ export default function AnalyticFormLogin() {
       Cookies.set("clevo_code", directAccessId, { expires: 365 });
       Cookies.set("clevo_id", directAccessId, { expires: 365 });
 
-      toast.success("Access granted! Redirecting to form...", {
-        duration: 2000,
-      });
+      // Close the direct access modal
+      setShowDirectAccess(false);
 
-      navigate(`/${orgName}/${formName}`, { replace: true });
+      // Show the "Your access code" modal so the user can note it down
+      setGeneratedCode(directAccessId);
+      setShowCodeModal(true);
+      setLoaded(true);
     } catch (error) {
       console.error("Direct access error:", error);
       toast.error("An error occurred. Please try again.", {
@@ -579,6 +620,38 @@ export default function AnalyticFormLogin() {
           </div>
         </div>
       </div>
+
+      {/* "Your Access Code" Modal — shown after direct access login */}
+      {showCodeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-[#080594] mb-2">Access Granted!</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Your access code is:
+            </p>
+            <div className="bg-gray-100 rounded-xl py-3 px-6 mb-4">
+              <span className="text-3xl font-bold tracking-widest text-[#080594]">{generatedCode}</span>
+            </div>
+            <p className="text-gray-500 text-xs mb-6">
+              Save this code! You can use it later at <strong>/my-responses</strong> to view all your filled forms.
+            </p>
+            <button
+              onClick={() => {
+                setShowCodeModal(false);
+                navigate(`/${orgName}/${formName}`, { replace: true });
+              }}
+              className="w-full py-3 font-semibold rounded-full bg-[#080594] text-white hover:bg-[#060480] transition-colors"
+            >
+              Continue to Form
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -1653,7 +1653,7 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
 
       {/* Full dosha icon - no circular cropping */}
       <motion.div
-        className="macxs:flex items-center justify-center aspect-square hidden "
+        className="flex items-center justify-center aspect-square"
         initial={{ scale: 0.8 }}
         animate={{ scale: active ? 1 : 0.8 }}
         transition={{ duration: 0.5, delay: 1 }}
@@ -1661,7 +1661,7 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
         <img
           src={icon}
           alt={`${dosha} dosha icon`}
-          className="w-28 h-28 sm2:w-36 sm2:h-36 sm:w-44 sm:h-44 tab:w-52 tab:h-52 mac:w-[13rem] md:w-[14rem] md:h-[14rem] object-contain"
+          className="w-24 h-24 sm2:w-28 sm2:h-28 sm:w-36 sm:h-36 tab:w-40 tab:h-40 mac:w-44 mac:h-44 md:w-48 md:h-48 object-contain"
         />
       </motion.div>
 
@@ -1678,18 +1678,6 @@ const DominantDoshaDisplay = ({ dosha, active }) => {
       >
         {dosha}
       </motion.p>
-       <motion.div
-        className="flex items-center justify-center aspect-square macxs:hidden "
-        initial={{ scale: 0.8 }}
-        animate={{ scale: active ? 1 : 0.8 }}
-        transition={{ duration: 0.5, delay: 1 }}
-      >
-        <img
-          src={icon}
-          alt={`${dosha} dosha icon`}
-          className="w-28 h-28 sm2:w-36 sm2:h-36 sm:w-44 sm:h-44 tab:w-52 tab:h-52 mac:w-[13rem] md:w-[14rem] md:h-[14rem] object-contain"
-        />
-      </motion.div>
     </motion.div>
   );
 };
@@ -1875,7 +1863,7 @@ const PrakritiSlide = ({ prakriti, active, isMobile }) => {
         </motion.p>
 
         {/* Two-column layout: Pie Chart on left, Dominant Dosha on right */}
-        <div className="flex flex-col tab800:flex-row tab800:gap-16 w-full max-w-4xl items-center justify-center">
+        <div className="flex flex-col tab800:flex-row gap-2 tab800:gap-12 md:gap-16 w-full max-w-4xl items-center justify-center">
           {/* Left Column - Dosha Pie Chart */}
           <motion.div
             variants={itemVariants}
@@ -1951,7 +1939,7 @@ const VikritiSlide = ({ vikriti, active, isMobile }) => {
         </motion.p>
 
         {/* Two-column layout: Pie Chart on left, Dominant Dosha on right */}
-        <div className="flex flex-col tab:flex-row gap-2 tab:gap-12 md:gap-16 w-full max-w-4xl items-center justify-center">
+        <div className="flex flex-col tab800:flex-row gap-2 tab800:gap-12 md:gap-16 w-full max-w-4xl items-center justify-center">
           {/* Left Column - Dosha Pie Chart */}
           <motion.div
             variants={itemVariants}

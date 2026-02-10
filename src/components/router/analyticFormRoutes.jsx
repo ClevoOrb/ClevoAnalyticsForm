@@ -18,6 +18,7 @@ import ExcelUpload from "../pages/AnalyticForm/ExcelUpload";
 import AnalyticsReport from "../pages/AnalyticForm/AnalyticsReport";
 import AyurvedaReport from "../pages/AnalyticForm/AyurvedaReport";
 import AccessCodeGuard from "../common/AccessCodeGuard";
+import MyResponses from "../pages/AnalyticForm/MyResponses";
 
 const analyticFormRoutes = [
   {
@@ -37,6 +38,13 @@ const analyticFormRoutes = [
         <ExcelUpload />
       </AccessCodeGuard>
     ),
+  },
+
+  // My Responses — user-facing page to view all filled forms by code
+  // Placed BEFORE dynamic /:orgName routes so it isn't caught by them
+  {
+    path: "/my-responses",
+    element: <MyResponses />,
   },
 
   // User routes - for filling forms
