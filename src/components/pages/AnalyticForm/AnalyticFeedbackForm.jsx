@@ -515,11 +515,11 @@ export default function AnalyticFeedbackForm() {
                     </span>
                   </div>
                 </Link>
-                <div className="w-full bg-gray-200 rounded-full mt-auto overflow-hidden" style={{ height: "2px" }}>
+                <div className="w-full bg-gray-200 rounded-full mt-auto overflow-hidden" style={{ height: "6px" }}>
                   <div
                     className="bg-[var(--color-accent)] transition-all duration-300"
                     style={{
-                      height: "2px",
+                      height: "6px",
                       width: `${isCompleted ? 100 : sectionProgress.progress || 0}%`,
                     }}
                   ></div>

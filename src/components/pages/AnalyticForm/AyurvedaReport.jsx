@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, isValidElement, cloneElement } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useAnalyticResponses from '../../../hooks/useAnalyticResponses';
 import bgImg from "../../assets/bg.jpg";
@@ -2452,9 +2452,58 @@ const LoadingSlide = () => (
 );
 
 // ============================================
+// PENDING SLIDE COMPONENT — shown while AI is generating the report
+// ============================================
+const PendingSlide = () => (
+  <div
+    className="relative w-full h-full min-h-[100vh] overflow-hidden flex items-center justify-center"
+    style={{
+      backgroundImage: `url(${bgImg})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    }}
+  >
+    <CornerDecorations />
+
+    <div className="text-center px-6">
+      <div className="text-5xl mb-4">🙏</div>
+      <h2
+        className="text-2xl font-semibold mb-2"
+        style={{ color: COLORS.primary }}
+      >
+        Your Report is Being Prepared
+      </h2>
+      <p className="font-poppins mb-4" style={{ color: COLORS.textBrown }}>
+        Our AI is analyzing your Ayurvedic responses. 
+      </p>
+      {/* Animated bouncing dots using Framer Motion */}
+      <div className="flex justify-center gap-2 mb-4">
+        {[0, 1, 2].map(i => (
+          <motion.div
+            key={i}
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: COLORS.primary }}
+            animate={{ y: [0, -10, 0] }}
+            transition={{
+              duration: 0.6,
+              repeat: Infinity,
+              delay: i * 0.15,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
+      <p className="font-poppins text-sm" style={{ color: COLORS.textBrown, opacity: 0.7 }}>
+        This page will re-check after 1 hour.
+      </p>
+    </div>
+  </div>
+);
+
+// ============================================
 // ERROR SLIDE COMPONENT
 // ============================================
-const ErrorSlide = ({ message }) => (
+const ErrorSlide = ({ message, onBack }) => (
   <div
     className="relative w-full h-full min-h-[100vh] overflow-hidden flex items-center justify-center"
     style={{
@@ -2474,7 +2523,19 @@ const ErrorSlide = ({ message }) => (
       >
         Unable to Load Report
       </h2>
-      <p className="font-poppins" style={{ color: COLORS.textBrown }}>{message}</p>
+      <p className="font-poppins mb-6" style={{ color: COLORS.textBrown }}>{message}</p>
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="px-6 py-3 rounded-xl font-medium transition-colors"
+          style={{
+            backgroundColor: COLORS.primary,
+            color: '#fff',
+          }}
+        >
+          Go Back
+        </button>
+      )}
     </div>
   </div>
 );
@@ -2485,15 +2546,17 @@ const ErrorSlide = ({ message }) => (
 const AyurvedaReport = () => {
   // Get URL parameters (orgName, formName, clevoCode)
   const { orgName, formName, clevoCode } = useParams();
+  const navigate = useNavigate();
   const formCode = `${orgName}/${formName}`;
   const containerRef = useRef(null);
 
   // Use the hook to fetch data
-  const { getAgentResponse, isLoading, error } = useAnalyticResponses(formCode, clevoCode);
+  const { getAgentResponseWithStatus } = useAnalyticResponses(formCode, clevoCode);
 
   // State
   const [reportData, setReportData] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [reportStatus, setReportStatus] = useState('loading'); // 'loading' | 'pending' | 'ready' | 'error' | 'not_found'
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -2510,31 +2573,61 @@ const AyurvedaReport = () => {
   const wheelCooldownTimer = useRef(null);
   const isWheelCoolingDown = useRef(false);
 
-  // Fetch report data on mount
+  // Fetch report data with polling for pending state
   useEffect(() => {
+    let pollingInterval = null;
+
     const fetchReport = async () => {
-      try {
-        const data = await getAgentResponse();
-        if (data) {
+      const result = await getAgentResponseWithStatus();
+
+      switch (result.status) {
+        case 'ready': {
           // Handle case where agent_response is an array (e.g., [{...}])
-          // Extract the first element if it's an array
-          const reportObj = Array.isArray(data) ? data[0] : data;
+          const reportObj = Array.isArray(result.data) ? result.data[0] : result.data;
 
           // Check if it's Ayurvedic format by looking for 'constitution' field
           if (reportObj && reportObj.constitution) {
             setReportData(reportObj);
+            setReportStatus('ready');
           } else {
             setLoadError('This report is not in Ayurvedic format.');
+            setReportStatus('error');
           }
-        } else {
-          setLoadError('Report not found.');
+          // Stop polling if it was running
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+          break;
         }
-      } catch (err) {
-        setLoadError(err.message);
+        case 'pending':
+          setReportStatus('pending');
+          // Start polling every 1 hour if not already polling
+          if (!pollingInterval) {
+            pollingInterval = setInterval(fetchReport, 3600000);
+          }
+          break;
+        case 'not_found':
+          setLoadError('Report not found.');
+          setReportStatus('not_found');
+          break;
+        case 'error':
+        default:
+          setLoadError(result.error || 'Failed to load report.');
+          setReportStatus('error');
+          break;
       }
     };
+
     fetchReport();
-  }, [getAgentResponse]);
+
+    // Cleanup: stop polling when component unmounts
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [getAgentResponseWithStatus]);
 
   // Build slides array
   const slides = [];
@@ -3063,8 +3156,8 @@ const AyurvedaReport = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, totalSlides, isMobile]);
 
-  // Render loading state
-  if (isLoading) {
+  // Render loading state — initial load, before we know the status
+  if (reportStatus === 'loading') {
     return (
       <div ref={containerRef} className="ayurveda-report h-screen w-full overflow-hidden relative">
         <LoadingSlide />
@@ -3072,11 +3165,20 @@ const AyurvedaReport = () => {
     );
   }
 
-  // Render error state
-  if (loadError || error) {
+  // Render pending state — form submitted but AI is still generating
+  if (reportStatus === 'pending') {
     return (
       <div ref={containerRef} className="ayurveda-report h-screen w-full overflow-hidden relative">
-        <ErrorSlide message={loadError || error} />
+        <PendingSlide />
+      </div>
+    );
+  }
+
+  // Render error / not-found state
+  if (reportStatus === 'error' || reportStatus === 'not_found') {
+    return (
+      <div ref={containerRef} className="ayurveda-report h-screen w-full overflow-hidden relative">
+        <ErrorSlide message={loadError} onBack={() => navigate('/my-responses')} />
       </div>
     );
   }
@@ -3144,6 +3246,22 @@ const AyurvedaReport = () => {
             backgroundPosition: 'center',
           }}
         />
+
+        {/* Back button — top-left on mobile */}
+        <button
+          onClick={() => navigate('/my-responses')}
+          className="fixed top-2 left-2 z-[60] flex items-center justify-center w-8 h-8 rounded-full"
+          style={{
+            backgroundColor: 'rgba(36, 48, 38, 0.25)',
+            backdropFilter: 'blur(8px)',
+            color: COLORS.primary,
+          }}
+          aria-label="Back to My Responses"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
 
         {/* Topic nav dropdown — fixed at top */}
         <MobileTopicNav
@@ -3293,6 +3411,30 @@ const AyurvedaReport = () => {
           {totalSlides}
         </motion.div>
       )}
+
+      {/* Back button — desktop only, bottom-left */}
+      <AnimatePresence>
+        {currentSlide > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => navigate('/my-responses')}
+            className="hidden tab:flex fixed bottom-3 sm:bottom-4 left-4 sm:left-6 z-50 items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: 'rgba(36, 48, 38, 0.15)',
+              backdropFilter: 'blur(8px)',
+              color: COLORS.primary,
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Mobile navigation buttons - visible only below 650px */}
       {totalSlides > 0 && (

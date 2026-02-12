@@ -98,7 +98,55 @@ export default function AnalyticFormLogin() {
     setLoaded(false);
 
     try {
-      // Use the same API endpoint as the original Clevo form
+      // First, check if this code is a direct access code in Supabase.
+      // Direct access codes are stored separately from Clevo codes, so we need
+      // to check the direct_access table before calling the external API.
+      const { data: directAccessRecord } = await supabase
+        .from('direct_access')
+        .select('direct_access_id, mobile_number')
+        .eq('direct_access_id', clevoCode)
+        .maybeSingle();
+
+      if (directAccessRecord) {
+        // This is a direct access code — validate mobile number against our database
+        if (directAccessRecord.mobile_number !== mobileNumber) {
+          toast.error("Invalid mobile number for this access code. Please use the same number you registered with.", {
+            duration: 4000,
+            id: "direct-access-invalid-mobile",
+          });
+          setLoaded(true);
+          return;
+        }
+
+        // Mobile matches — check if form already submitted
+        const { data: existingResponse } = await supabase
+          .from('analytic_responses')
+          .select('response_data')
+          .eq('form_code', formId)
+          .eq('clevo_code', clevoCode)
+          .single();
+
+        if (existingResponse?.response_data?.form_completed === "yes") {
+          toast.info("You have already submitted this form!", {
+            duration: 4000,
+            id: "form-already-submitted"
+          });
+        }
+
+        // Set cookies (using the direct access code as both clevo_code and clevo_id)
+        Cookies.set("analytic_clevo_code", clevoCode, { expires: 365 });
+        Cookies.set("analytic_clevo_id", clevoCode, { expires: 365 });
+        Cookies.set("analytic_form_id", formId, { expires: 365 });
+        Cookies.set("analytic_direct_access", "true", { expires: 365 });
+        Cookies.set("clevo_code", clevoCode, { expires: 365 });
+        Cookies.set("clevo_id", clevoCode, { expires: 365 });
+
+        localStorage.setItem(`analytic_last_clevo_code_${formId}`, clevoCode);
+        navigate(`/${orgName}/${formName}`, { replace: true });
+        return;
+      }
+
+      // Not a direct access code — use the external API for Clevo code validation
       const response = await axios.get(
         `https://api.theorb.bio/api/v1/reports/get_clevo_id?clevo_code=${clevoCode}&mob=${mobileNumber}`
       );

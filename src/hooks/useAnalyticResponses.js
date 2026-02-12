@@ -348,6 +348,57 @@ const useAnalyticResponses = (formCode, clevoCode) => {
   }, [formCode, clevoCode]);
 
   /**
+   * Get agent response with status information.
+   * Unlike getAgentResponse() which returns null for both "pending" and "not found",
+   * this function distinguishes between the two by also checking response_data.form_completed.
+   *
+   * Returns: { status: 'ready' | 'pending' | 'not_found' | 'error', data: parsedReport | null, error?: string }
+   */
+  const getAgentResponseWithStatus = useCallback(async () => {
+    if (!formCode || !clevoCode) return { status: 'error', data: null, error: 'Missing form or user code' };
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('analytic_responses')
+        .select('agent_response, response_data')
+        .eq('form_code', formCode)
+        .eq('clevo_code', clevoCode)
+        .single();
+
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
+          // No row exists at all — user never submitted this form
+          return { status: 'not_found', data: null };
+        }
+        return { status: 'error', data: null, error: fetchError.message };
+      }
+
+      // Row exists — check if agent_response has data
+      const agentResponse = data?.agent_response;
+      if (agentResponse) {
+        // Report is ready — parse if needed
+        let parsed = agentResponse;
+        if (typeof agentResponse === 'string') {
+          try { parsed = JSON.parse(agentResponse); } catch { parsed = agentResponse; }
+        }
+        return { status: 'ready', data: parsed };
+      }
+
+      // agent_response is null — check if form was completed (report is being generated)
+      const formCompleted = data?.response_data?.form_completed;
+      if (formCompleted === 'yes') {
+        return { status: 'pending', data: null };
+      }
+
+      // Row exists but form not completed and no agent_response — treat as not found
+      return { status: 'not_found', data: null };
+    } catch (err) {
+      console.error('Error fetching agent response with status:', err);
+      return { status: 'error', data: null, error: err.message };
+    }
+  }, [formCode, clevoCode]);
+
+  /**
    * Get overall progress for all sections
    */
   const getOverallProgress = useCallback(async (allSections) => {
@@ -387,6 +438,7 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     updateRewards,
     getOverallProgress,
     getAgentResponse,
+    getAgentResponseWithStatus,
     responseData,
     isLoading,
     error

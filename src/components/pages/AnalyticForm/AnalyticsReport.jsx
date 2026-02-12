@@ -1368,11 +1368,12 @@ const AnalyticsReport = () => {
   const formCode = `${orgName}/${formName}`;
   const containerRef = useRef(null);
 
-  const { getAgentResponse, isLoading, error } = useAnalyticResponses(formCode, clevoCode);
+  const { getAgentResponseWithStatus } = useAnalyticResponses(formCode, clevoCode);
   const { getForm } = useAnalyticForms();
 
   const [reportData, setReportData] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [reportStatus, setReportStatus] = useState('loading'); // 'loading' | 'pending' | 'ready' | 'error' | 'not_found'
   const [formConfig, setFormConfig] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1); // 1 = forward, -1 = backward
@@ -1404,22 +1405,51 @@ const AnalyticsReport = () => {
     loadFormConfig();
   }, [formCode, getForm]);
 
-  // Fetch report
+  // Fetch report with polling for pending state
   useEffect(() => {
+    let pollingInterval = null;
+
     const fetchReport = async () => {
-      try {
-        const data = await getAgentResponse();
-        if (data) {
-          setReportData(data);
-        } else {
+      const result = await getAgentResponseWithStatus();
+
+      switch (result.status) {
+        case 'ready':
+          setReportData(result.data);
+          setReportStatus('ready');
+          // Stop polling if it was running
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+          break;
+        case 'pending':
+          setReportStatus('pending');
+          // Start polling every 1 hour if not already polling
+          if (!pollingInterval) {
+            pollingInterval = setInterval(fetchReport, 3600000);
+          }
+          break;
+        case 'not_found':
           setLoadError('Report not found.');
-        }
-      } catch (err) {
-        setLoadError(err.message);
+          setReportStatus('not_found');
+          break;
+        case 'error':
+        default:
+          setLoadError(result.error || 'Failed to load report.');
+          setReportStatus('error');
+          break;
       }
     };
+
     fetchReport();
-  }, [getAgentResponse]);
+
+    // Cleanup: stop polling when component unmounts
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [getAgentResponseWithStatus]);
 
   // Build slides array once we have data
   const slides = [];
@@ -1601,8 +1631,8 @@ const AnalyticsReport = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, totalSlides]);
 
-  // Loading state
-  if (isLoading) {
+  // Loading state — initial load, before we know the status
+  if (reportStatus === 'loading') {
     return (
       <div className="h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -1616,8 +1646,43 @@ const AnalyticsReport = () => {
     );
   }
 
-  // Error state
-  if (error || loadError) {
+  // Pending state — form was submitted but AI is still generating the report
+  if (reportStatus === 'pending') {
+    return (
+      <div className="h-screen bg-white flex items-center justify-center p-4">
+        <div className="bg-[#F5F5F5] rounded-2xl max-w-sm p-8 text-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: `${COLORS.accent}15` }}>
+            <svg className="w-8 h-8" style={{ color: COLORS.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-[#1A1A1A] text-xl font-bold mb-2">Your Report is Being Prepared</h2>
+          <p className="text-[#666666] text-sm mb-4">
+            Our AI is analyzing your responses. 
+          </p>
+          {/* Bouncing dots animation */}
+          <div className="flex justify-center gap-1.5 mb-4">
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="w-2.5 h-2.5 rounded-full animate-bounce"
+                style={{
+                  backgroundColor: COLORS.accent,
+                  animationDelay: `${i * 0.15}s`,
+                  animationDuration: '0.8s',
+                }}
+              />
+            ))}
+          </div>
+          <p className="text-[#999999] text-xs">This page will re-check after 1 hour.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error / not-found state
+  if (reportStatus === 'error' || reportStatus === 'not_found') {
     return (
       <div className="h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-[#F5F5F5] rounded-2xl max-w-sm p-8 text-center">
@@ -1627,9 +1692,9 @@ const AnalyticsReport = () => {
             </svg>
           </div>
           <h2 className="text-[#1A1A1A] text-xl font-bold mb-2">Unable to Load</h2>
-          <p className="text-[#666666] text-sm mb-6">{error || loadError}</p>
+          <p className="text-[#666666] text-sm mb-6">{loadError}</p>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/my-responses')}
             className="px-6 py-3 border-2 border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white text-[#1A1A1A] font-medium rounded-xl transition-colors"
           >
             Go Back
@@ -1685,7 +1750,7 @@ const AnalyticsReport = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
-            onClick={() => navigate(`/${orgName}/${formName}`)}
+            onClick={() => navigate('/my-responses')}
             className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F5F5F5] hover:bg-[#E5E5E5] text-[#1A1A1A] transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

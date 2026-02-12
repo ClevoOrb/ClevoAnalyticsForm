@@ -10,6 +10,7 @@
  * - Once verified, the access is stored in localStorage
  */
 
+import { Navigate } from "react-router-dom";
 import AnalyticFormLogin from "../pages/AnalyticForm/AnalyticFormLogin";
 import AnalyticFeedbackForm from "../pages/AnalyticForm/AnalyticFeedbackForm";
 import AnalyticFeedbackFormPost from "../pages/AnalyticForm/AnalyticFeedbackFormPost";
@@ -21,6 +22,10 @@ import AccessCodeGuard from "../common/AccessCodeGuard";
 import MyResponses from "../pages/AnalyticForm/MyResponses";
 
 const analyticFormRoutes = [
+  {
+    path: "/",
+    element: <Navigate to="/analytic-forms" replace />,
+  },
   {
     path: "/analytic-forms",
     // Wrapped with AccessCodeGuard - requires access code to view
