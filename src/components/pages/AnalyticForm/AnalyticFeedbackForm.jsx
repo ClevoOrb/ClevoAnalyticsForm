@@ -371,38 +371,60 @@ export default function AnalyticFeedbackForm() {
     return supabaseResponseData?.sections?.[sectionName]?.is_submitted || false;
   };
 
-  // Helper function to get section progress (from local Supabase data)
-  const getSectionProgress = (sectionName) => {
-    // Use locally stored response data for synchronous access
-    if (!supabaseResponseData || !supabaseResponseData.sections || !supabaseResponseData.sections[sectionName]) {
-      return { completed: false, progress: 0, hasData: false };
+  // Read locally saved draft answers for a section. Auto-save only writes to
+  // localStorage until the section is submitted, so Supabase has no record of
+  // partial progress — the list must read the draft to show an in-progress bar.
+  const getLocalDraftAnswers = (sectionName) => {
+    if (!formId || !clevoCode) return null;
+    try {
+      const raw = localStorage.getItem(`analytic_form_data_${formId}_${clevoCode}_${sectionName}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed.ttl && Date.now() > parsed.ttl) return null;
+      return parsed.formData || null;
+    } catch (e) {
+      return null;
     }
+  };
 
-    const section = supabaseResponseData.sections[sectionName];
+  const countFilledAnswers = (questions, answers) => {
+    if (!answers) return 0;
+    let filledCount = 0;
+    questions.forEach((question) => {
+      const answer = answers[question["index"]];
+      if (answer && answer[0] && answer[0] !== "") {
+        filledCount++;
+      }
+    });
+    return filledCount;
+  };
+
+  // Helper function to get section progress (Supabase data + local draft)
+  const getSectionProgress = (sectionName) => {
+    const section = supabaseResponseData?.sections?.[sectionName];
+    const isSubmitted = section?.is_submitted || false;
+
     const sectionConfig = jsonData.find(item => Object.keys(item)[0] === sectionName);
-
     if (!sectionConfig) {
-      return { completed: section.is_submitted, progress: section.is_submitted ? 100 : 0, hasData: true };
+      return { completed: isSubmitted, progress: isSubmitted ? 100 : 0, hasData: !!section };
     }
 
     const questions = sectionConfig[sectionName];
     const totalQuestions = questions.length;
-    const answers = section.answers || {};
 
-    let filledCount = 0;
-    questions.forEach((question) => {
-      const questionIndex = question["index"];
-      if (answers[questionIndex] && answers[questionIndex][0] && answers[questionIndex][0] !== "") {
-        filledCount++;
-      }
-    });
+    // Take whichever source has more answers: submitted data in Supabase or
+    // the local draft of an in-progress section
+    const filledCount = Math.max(
+      countFilledAnswers(questions, section?.answers),
+      countFilledAnswers(questions, getLocalDraftAnswers(sectionName))
+    );
 
     const progress = totalQuestions > 0 ? Math.round((filledCount / totalQuestions) * 100) : 0;
 
     return {
-      completed: section.is_submitted,
-      progress: section.is_submitted ? 100 : progress,
-      hasData: filledCount > 0,
+      completed: isSubmitted,
+      progress: isSubmitted ? 100 : progress,
+      hasData: filledCount > 0 || !!section,
       filledCount,
       totalQuestions
     };
@@ -459,24 +481,11 @@ export default function AnalyticFeedbackForm() {
 
             const isNextToFill = lastFilled === index;
 
-            let sectionProgress = { completed: false, progress: 0, hasData: false };
-
-            if (clevoCode) {
-              if (!isSubmitted) {
-                if (isNextToFill) {
-                  const isJustNavigated = sessionStorage.getItem("analyticNavigatedFromSubmission") === "true";
-                  if (isJustNavigated) {
-                    sectionProgress = { completed: false, progress: 0, hasData: false };
-                  } else {
-                    sectionProgress = getSectionProgress(sectionName);
-                  }
-                } else if (index < lastFilled) {
-                  sectionProgress = getSectionProgress(sectionName);
-                }
-              } else {
-                sectionProgress = getSectionProgress(sectionName);
-              }
-            }
+            // Drafts of sections not yet reached are pre-cleared on submission,
+            // so computing progress for every section is always safe
+            const sectionProgress = clevoCode
+              ? getSectionProgress(sectionName)
+              : { completed: false, progress: 0, hasData: false };
 
             const isActive = isNextToFill;
             const isDisabled = index > lastFilled;

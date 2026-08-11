@@ -8,7 +8,10 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-const useAnalyticResponses = (formCode, clevoCode) => {
+const useAnalyticResponses = (formCode, rawClevoCode) => {
+  // Codes may come from cookies/inputs with stray whitespace (e.g. a trailing
+  // newline), which creates duplicate rows in Supabase — always use trimmed values
+  const clevoCode = typeof rawClevoCode === 'string' ? rawClevoCode.trim() : rawClevoCode;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [responseData, setResponseData] = useState(null);
@@ -26,23 +29,27 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     setError(null);
 
     try {
+      // Not .single(): if duplicate rows exist for this user, .single() errors
+      // and every caller sees "no data" — take the most recently updated row instead
       const { data, error: fetchError } = await supabase
         .from('analytic_responses')
         .select('*')
         .eq('form_code', formCode)
         .eq('clevo_code', clevoCode)
-        .single();
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
       if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          return null;
-        }
         throw fetchError;
       }
 
-      setResponseData(data.response_data);
-      responseDataRef.current = data.response_data;
-      return data.response_data;
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      setResponseData(data[0].response_data);
+      responseDataRef.current = data[0].response_data;
+      return data[0].response_data;
     } catch (err) {
       console.error('Error fetching response:', err);
       setError(err.message);
@@ -62,19 +69,47 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     setError(null);
 
     try {
+      const payload = {
+        form_code: formCode,
+        clevo_code: clevoCode,
+        response_data: newResponseData,
+        updated_at: new Date().toISOString()
+      };
+
       const { error: upsertError } = await supabase
         .from('analytic_responses')
-        .upsert({
-          form_code: formCode,
-          clevo_code: clevoCode,
-          response_data: newResponseData,
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(payload, {
           onConflict: 'form_code,clevo_code'
         });
 
       if (upsertError) {
-        throw upsertError;
+        // 42P10: the table has no unique constraint on (form_code, clevo_code),
+        // so ON CONFLICT is rejected and NOTHING is ever saved. Fall back to a
+        // manual update-then-insert so saving works regardless of the schema.
+        if (upsertError.code === '42P10') {
+          const { data: updatedRows, error: updateError } = await supabase
+            .from('analytic_responses')
+            .update({ response_data: newResponseData, updated_at: payload.updated_at })
+            .eq('form_code', formCode)
+            .eq('clevo_code', clevoCode)
+            .select('form_code');
+
+          if (updateError) {
+            throw updateError;
+          }
+
+          if (!updatedRows || updatedRows.length === 0) {
+            const { error: insertError } = await supabase
+              .from('analytic_responses')
+              .insert(payload);
+
+            if (insertError) {
+              throw insertError;
+            }
+          }
+        } else {
+          throw upsertError;
+        }
       }
 
       setResponseData(newResponseData);
@@ -314,22 +349,24 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      const { data: rows, error: fetchError } = await supabase
         .from('analytic_responses')
         .select('agent_response')
         .eq('form_code', formCode)
         .eq('clevo_code', clevoCode)
-        .single();
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
       if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          return null; // No record found
-        }
         throw fetchError;
       }
 
+      if (!rows || rows.length === 0) {
+        return null; // No record found
+      }
+
       // Parse the agent_response if it's a string
-      const agentResponse = data?.agent_response;
+      const agentResponse = rows[0]?.agent_response;
       if (typeof agentResponse === 'string') {
         try {
           return JSON.parse(agentResponse);
@@ -358,20 +395,24 @@ const useAnalyticResponses = (formCode, clevoCode) => {
     if (!formCode || !clevoCode) return { status: 'error', data: null, error: 'Missing form or user code' };
 
     try {
-      const { data, error: fetchError } = await supabase
+      const { data: rows, error: fetchError } = await supabase
         .from('analytic_responses')
         .select('agent_response, response_data')
         .eq('form_code', formCode)
         .eq('clevo_code', clevoCode)
-        .single();
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
       if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          // No row exists at all — user never submitted this form
-          return { status: 'not_found', data: null };
-        }
         return { status: 'error', data: null, error: fetchError.message };
       }
+
+      if (!rows || rows.length === 0) {
+        // No row exists at all — user never submitted this form
+        return { status: 'not_found', data: null };
+      }
+
+      const data = rows[0];
 
       // Row exists — check if agent_response has data
       const agentResponse = data?.agent_response;

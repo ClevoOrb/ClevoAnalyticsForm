@@ -1131,6 +1131,14 @@ export default function AnalyticFeedbackFormPost() {
         const markResult = await markSectionSubmitted(id);
         console.log("markSectionSubmitted result:", markResult);
 
+        // If Supabase rejected the save, stop here — navigating on would lose
+        // the user's answers and the section would never show as completed
+        if (!saveResult || !markResult) {
+          setLoaded(true);
+          alert("Your answers could not be saved. Please check your connection and press Done again.");
+          return;
+        }
+
         // Update rewards in Supabase
         console.log("Updating rewards in Supabase...");
         const rewardsResult = await updateSupabaseRewards({
